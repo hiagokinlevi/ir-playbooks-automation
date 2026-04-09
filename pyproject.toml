@@ -1,0 +1,75 @@
+[build-system]
+# Use setuptools as the build backend — widely supported and stable
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.backends.legacy:build"
+
+[project]
+name = "ir-playbooks-automation"
+version = "1.0.0"
+description = "Incident response playbooks, automated triage workflows, and containment automation for SOC teams and blue teamers"
+readme = "README.md"
+license = { file = "LICENSE" }
+requires-python = ">=3.11"  # We rely on match statements and tomllib (3.11+)
+
+# Runtime dependencies — keep this list intentional and minimal
+dependencies = [
+    "click>=8.1",            # CLI framework for the k1n-ir entrypoint
+    "pydantic>=2.5",         # Data validation for incident schemas
+    "pyyaml>=6.0",           # YAML parsing for playbook configs and policy files
+    "structlog>=23.2",       # Structured, JSON-capable logging for audit trails
+    "python-dotenv>=1.0",    # .env file loading for runtime configuration
+    "jinja2>=3.1",           # Template rendering for reports and communications
+    "tabulate>=0.9",         # Table formatting for CLI output
+    "rich>=13.0",            # Rich terminal output (progress bars, formatted panels)
+]
+
+[project.optional-dependencies]
+# Development and testing dependencies — not needed in production
+dev = [
+    "pytest>=7.4",           # Test runner
+    "pytest-cov>=4.1",       # Coverage reporting
+    "mypy>=1.7",             # Static type checking
+    "ruff>=0.1",             # Fast Python linter and formatter
+    "boto3>=1.34",           # AWS SDK (optional — only needed for cloud automations)
+    "boto3-stubs[ec2]>=1.34",# Type stubs for boto3 EC2
+]
+
+[project.scripts]
+# Registers the `k1n-ir` command when the package is installed
+k1n-ir = "cli.main:cli"
+
+[tool.setuptools.packages.find]
+# Auto-discover all packages — no need to list them manually
+where = ["."]
+exclude = ["tests*", "docs*", "training*"]
+
+[tool.pytest.ini_options]
+# Test discovery configuration
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_functions = ["test_*"]
+addopts = "--tb=short -q"   # Short tracebacks, quiet output by default
+
+[tool.ruff]
+# Linting configuration — enforces consistency across contributors
+line-length = 100
+target-version = "py311"
+select = [
+    "E",    # pycodestyle errors
+    "W",    # pycodestyle warnings
+    "F",    # pyflakes (undefined names, unused imports)
+    "I",    # isort (import ordering)
+    "N",    # pep8-naming
+    "UP",   # pyupgrade (modern Python syntax)
+    "S",    # bandit security checks
+]
+ignore = [
+    "S101",  # Allow assert statements (used in tests)
+    "S603",  # subprocess calls are intentional in automation scripts
+]
+
+[tool.mypy]
+# Static type checking — catches type errors before runtime
+python_version = "3.11"
+strict = true                # Enable all strict checks
+ignore_missing_imports = true  # Don't fail on untyped third-party libs
