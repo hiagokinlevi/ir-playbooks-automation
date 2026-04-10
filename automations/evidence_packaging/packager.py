@@ -31,8 +31,13 @@ import os
 import shutil
 from datetime import datetime, timezone
 from pathlib import Path
+from typing import Any
 
-from dotenv import load_dotenv
+try:
+    from dotenv import load_dotenv
+except ModuleNotFoundError:
+    def load_dotenv(*args: Any, **kwargs: Any) -> bool:
+        return False
 
 from automations.logging_compat import structlog
 

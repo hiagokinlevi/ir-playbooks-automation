@@ -27,13 +27,45 @@ import os
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Optional
+from typing import Any, Optional
 
 import click
-from dotenv import load_dotenv
-from rich.console import Console
-from rich.panel import Panel
-from rich.table import Table
+
+try:
+    from dotenv import load_dotenv
+except ModuleNotFoundError:
+    def load_dotenv(*args: Any, **kwargs: Any) -> bool:
+        return False
+
+try:
+    from rich.console import Console
+    from rich.panel import Panel
+    from rich.table import Table
+except ModuleNotFoundError:
+    class Console:
+        def print(self, *objects: Any, **kwargs: Any) -> None:
+            click.echo(" ".join(str(obj) for obj in objects))
+
+    class Panel:
+        @staticmethod
+        def fit(renderable: Any, **kwargs: Any) -> Any:
+            return renderable
+
+    class Table:
+        def __init__(self, title: str | None = None, **kwargs: Any) -> None:
+            self.title = title
+            self.rows: list[tuple[str, ...]] = []
+
+        def add_column(self, *args: Any, **kwargs: Any) -> None:
+            return None
+
+        def add_row(self, *values: Any, **kwargs: Any) -> None:
+            self.rows.append(tuple(str(value) for value in values))
+
+        def __str__(self) -> str:
+            lines = [self.title] if self.title else []
+            lines.extend(" | ".join(row) for row in self.rows)
+            return "\n".join(lines)
 
 # Load .env if present — allows running without explicitly setting env vars
 load_dotenv()
