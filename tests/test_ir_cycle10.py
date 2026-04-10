@@ -99,7 +99,7 @@ class TestIncidentMetadata:
     meta = _incident_metadata("INC-2026-042", "compromised-vm")
 
     def test_has_incident_id(self):
-        assert self.meta["k1n-ir-incident-id"] == "INC-2026-042"
+        assert self.meta["k1n-ir-incident-id"] == "inc-2026-042"
 
     def test_action_is_isolation(self):
         assert self.meta["k1n-ir-action"] == "isolation"

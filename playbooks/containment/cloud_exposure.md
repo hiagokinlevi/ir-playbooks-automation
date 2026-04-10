@@ -88,6 +88,20 @@ python automations/cloud/isolate_aws_instance.py \
   --region us-east-1
 ```
 
+### Compute Engine VM (GCP) — Network Exposure
+```python
+from automations.cloud.isolate_gcp_instance import isolate_gcp_instance
+
+result = isolate_gcp_instance(
+    project_id="<project-id>",
+    zone="us-central1-a",
+    instance_name="<instance-name>",
+    incident_id="<INC-ID>",
+    dry_run=True,
+)
+print(result.actions_taken)
+```
+
 ### Azure Blob Container
 ```bash
 # Set container to private (removes anonymous access)

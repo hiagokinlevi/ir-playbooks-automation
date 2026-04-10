@@ -6,7 +6,6 @@ This roadmap outlines planned improvements and features. Priorities may shift ba
 
 ## v1.1 — Expanded Cloud Coverage
 
-- [ ] GCP Compute Engine isolation automation (`isolate_gcp_instance.py`)
 - [ ] Azure VM network isolation via NSG automation
 - [ ] S3 bucket public-access lockdown automation
 - [ ] GCS bucket exposure containment
@@ -47,11 +46,12 @@ This roadmap outlines planned improvements and features. Priorities may shift ba
 - [x] Credential compromise containment playbook
 - [x] Cloud exposure containment playbook
 - [x] AWS EC2 isolation automation
+- [x] GCP Compute Engine isolation automation (`isolate_gcp_instance.py`)
 - [x] Azure session revocation script
 - [x] Evidence packaging with SHA-256 manifest
 - [x] Pydantic incident schemas
 - [x] Incident state machine
-- [x] Click CLI (open-incident, set-severity, start-playbook, create-timeline, generate-report)
+- [x] Click CLI (open-incident, set-severity, start-playbook, create-timeline, generate-report, isolate-gcp-instance)
 
 ---
 

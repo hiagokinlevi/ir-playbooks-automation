@@ -32,8 +32,9 @@ import shutil
 from datetime import datetime, timezone
 from pathlib import Path
 
-import structlog
 from dotenv import load_dotenv
+
+from automations.logging_compat import structlog
 
 load_dotenv()  # Load environment variables from .env if present
 

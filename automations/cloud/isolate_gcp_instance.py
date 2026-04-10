@@ -117,12 +117,25 @@ def _firewall_rule_name(incident_id: str) -> str:
     return name[:63]
 
 
+def _directional_firewall_rule_name(incident_id: str, direction: str) -> str:
+    """Return a GCP-safe firewall rule name with a direction suffix."""
+    suffix = f"-{direction}"
+    base = _firewall_rule_name(incident_id)
+    return f"{base[: 63 - len(suffix)]}{suffix}"
+
+
+def _label_value(value: str) -> str:
+    """Return a GCP-label-safe value preserving enough context for audit use."""
+    cleaned = re.sub(r"[^a-z0-9_-]", "-", value.lower()).strip("-_")
+    return cleaned[:63]
+
+
 def _incident_metadata(incident_id: str, instance_name: str) -> dict[str, str]:
     """Return GCP instance metadata labels for incident traceability."""
     return {
-        "k1n-ir-incident-id":  incident_id,
+        "k1n-ir-incident-id":  _label_value(incident_id),
         "k1n-ir-action":       "isolation",
-        "k1n-ir-instance":     instance_name,
+        "k1n-ir-instance":     _label_value(instance_name),
         "k1n-ir-timestamp":    _timestamp(),
         "k1n-ir-automated":    "true",
     }
@@ -143,7 +156,7 @@ def _build_deny_all_firewall_body(
     tag = _isolation_tag(incident_id)
     return {
         "ingress_rule": {
-            "name": f"{_firewall_rule_name(incident_id)}-ingress",
+            "name": _directional_firewall_rule_name(incident_id, "ingress"),
             "description": f"Incident containment: deny all ingress — {incident_id}",
             "network": network,
             "priority": 100,
@@ -153,7 +166,7 @@ def _build_deny_all_firewall_body(
             "sourceRanges": ["0.0.0.0/0"],
         },
         "egress_rule": {
-            "name": f"{_firewall_rule_name(incident_id)}-egress",
+            "name": _directional_firewall_rule_name(incident_id, "egress"),
             "description": f"Incident containment: deny all egress — {incident_id}",
             "network": network,
             "priority": 100,

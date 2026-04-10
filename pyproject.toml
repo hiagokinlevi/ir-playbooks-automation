@@ -1,7 +1,7 @@
 [build-system]
 # Use setuptools as the build backend — widely supported and stable
 requires = ["setuptools>=68", "wheel"]
-build-backend = "setuptools.backends.legacy:build"
+build-backend = "setuptools.build_meta"
 
 [project]
 name = "ir-playbooks-automation"
@@ -36,7 +36,10 @@ dev = [
 
 [project.scripts]
 # Registers the `k1n-ir` command when the package is installed
-k1n-ir = "cli.main:cli"
+k1n-ir = "ir_playbooks_automation_cli:cli"
+
+[tool.setuptools]
+py-modules = ["ir_playbooks_automation_cli"]
 
 [tool.setuptools.packages.find]
 # Auto-discover all packages — no need to list them manually
