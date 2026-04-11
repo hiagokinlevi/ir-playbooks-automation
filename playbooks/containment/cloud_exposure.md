@@ -91,17 +91,41 @@ python automations/cloud/isolate_aws_instance.py \
 ```
 
 ### Compute Engine VM (GCP) — Network Exposure
-```python
-from automations.cloud.isolate_gcp_instance import isolate_gcp_instance
+```bash
+# Preview isolation and save rollback state to a file
+k1n-ir isolate-gcp-instance \
+  --project-id <project-id> \
+  --zone us-central1-a \
+  --instance-name <instance-name> \
+  --incident-id <INC-ID> \
+  --output gcp-isolation-preview.json
 
-result = isolate_gcp_instance(
-    project_id="<project-id>",
-    zone="us-central1-a",
-    instance_name="<instance-name>",
-    incident_id="<INC-ID>",
-    dry_run=True,
-)
-print(result.actions_taken)
+# Execute only after containment approval
+k1n-ir isolate-gcp-instance \
+  --project-id <project-id> \
+  --zone us-central1-a \
+  --instance-name <instance-name> \
+  --incident-id <INC-ID> \
+  --execute
+```
+
+### Azure VM — Network Exposure
+```bash
+# Preview NSG isolation and save rollback state to a file
+k1n-ir isolate-azure-vm \
+  --subscription-id <subscription-id> \
+  --resource-group <resource-group> \
+  --vm-name <vm-name> \
+  --incident-id <INC-ID> \
+  --output azure-isolation-preview.json
+
+# Execute only after containment approval
+k1n-ir isolate-azure-vm \
+  --subscription-id <subscription-id> \
+  --resource-group <resource-group> \
+  --vm-name <vm-name> \
+  --incident-id <INC-ID> \
+  --execute
 ```
 
 ### Azure Blob Container

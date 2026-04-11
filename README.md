@@ -102,6 +102,14 @@ k1n-ir lockdown-s3-bucket \
   --incident-id INC-20250101-001 \
   --output s3-lockdown-preview.json
 
+# Preview Azure VM NSG isolation before live containment
+k1n-ir isolate-azure-vm \
+  --subscription-id 00000000-0000-0000-0000-000000000000 \
+  --resource-group rg-production \
+  --vm-name app-server-01 \
+  --incident-id INC-20250101-001 \
+  --output azure-isolation-preview.json
+
 # Preview GCP Compute Engine isolation before live containment
 k1n-ir isolate-gcp-instance \
   --project-id production-project \
@@ -140,6 +148,12 @@ k1n-ir isolate-gcp-instance \
 | `identity/revoke_azure_sessions.ps1` | Azure AD | Revokes all active sessions for a compromised user |
 
 > **Safety note:** All automation scripts support a `--dry-run` flag. When `APPROVAL_REQUIRED_FOR_CONTAINMENT=true` in `.env`, destructive actions require explicit confirmation. Always validate scope before executing.
+
+### Azure VM Network Containment
+
+The installed `k1n-ir isolate-azure-vm` command previews Azure VM isolation by default. It records the rollback metadata that a live containment run would preserve, previews the incident-specific NSG creation and NIC association, and can optionally deallocate the VM after approval.
+
+Use `--execute` only after containment approval. Live mode requires the Azure identity, compute, and network SDK packages plus the RBAC permissions listed in `automations/cloud/isolate_azure_vm.py`.
 
 ### GCP Compute Engine Containment
 

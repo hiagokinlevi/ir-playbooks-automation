@@ -196,7 +196,8 @@ def isolate_azure_vm(
             f"[DRY RUN] Would fetch VM '{vm_name}' in resource group '{resource_group}'",
             f"[DRY RUN] Would retrieve primary NIC from VM '{vm_name}'",
             f"[DRY RUN] Would save current NSG association to saved_state for rollback",
-            f"[DRY RUN] Would create isolation NSG '{isolation_nsg_name}' with deny-all rules",
+            f"[DRY RUN] Would create isolation NSG '{isolation_nsg_name}' in '{location}' "
+            f"with deny-all rules",
             f"[DRY RUN] Would associate '{isolation_nsg_name}' with NIC of '{vm_name}'",
             f"[DRY RUN] Would tag VM '{vm_name}' with incident metadata: "
             f"incident_id={incident_id}",
@@ -283,7 +284,9 @@ def isolate_azure_vm(
         nsg = network_client.network_security_groups.begin_create_or_update(
             resource_group, isolation_nsg_name, nsg_params
         ).result()
-        result.actions_taken.append(f"Created isolation NSG '{isolation_nsg_name}' (id: {nsg.id})")
+        result.actions_taken.append(
+            f"Created isolation NSG '{isolation_nsg_name}' in '{location}' (id: {nsg.id})"
+        )
 
         # Step 5: Associate isolation NSG with NIC
         nic.network_security_group = {"id": nsg.id}

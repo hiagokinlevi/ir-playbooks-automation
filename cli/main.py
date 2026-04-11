@@ -11,6 +11,8 @@ Commands:
     generate-report     Generate a Markdown report for an incident
     lockdown-s3-bucket
                         Preview or run S3 public-access containment
+    isolate-azure-vm
+                        Preview or run Azure VM network containment
     isolate-gcp-instance
                         Preview or run GCP Compute Engine containment
 
@@ -540,6 +542,90 @@ def lockdown_s3_bucket_cmd(
 
     if not result.success:
         raise click.ClickException("S3 bucket lockdown did not complete successfully.")
+
+
+# ---------------------------------------------------------------------------
+# isolate-azure-vm
+# ---------------------------------------------------------------------------
+
+@cli.command("isolate-azure-vm")
+@click.option("--subscription-id", required=True, help="Azure subscription ID.")
+@click.option("--resource-group", required=True, help="Azure resource group for the VM.")
+@click.option("--vm-name", required=True, help="Azure VM name.")
+@click.option("--incident-id", required=True, help="Incident ID for audit tagging.")
+@click.option(
+    "--location",
+    default="eastus",
+    help="Azure region for the incident isolation NSG.",
+    show_default=True,
+)
+@click.option(
+    "--deallocate-vm",
+    is_flag=True,
+    help="Also deallocate the VM after NSG isolation.",
+)
+@click.option(
+    "--execute",
+    is_flag=True,
+    help="Run live containment. Omit to keep the command in dry-run preview mode.",
+)
+@click.option("--output", "-o", default=None, type=click.Path(), help="Write result JSON.")
+def isolate_azure_vm_cmd(
+    subscription_id: str,
+    resource_group: str,
+    vm_name: str,
+    incident_id: str,
+    location: str,
+    deallocate_vm: bool,
+    execute: bool,
+    output: Optional[str],
+) -> None:
+    """Preview or run reversible Azure VM NSG isolation."""
+    from dataclasses import asdict
+
+    from automations.cloud.isolate_azure_vm import isolate_azure_vm
+
+    if execute and os.getenv("APPROVAL_REQUIRED_FOR_CONTAINMENT", "true").lower() == "true":
+        click.confirm(
+            "Live containment can disrupt production traffic. Confirm approved execution",
+            abort=True,
+        )
+
+    result = isolate_azure_vm(
+        subscription_id=subscription_id,
+        resource_group=resource_group,
+        vm_name=vm_name,
+        incident_id=incident_id,
+        location=location,
+        deallocate_vm=deallocate_vm,
+        dry_run=not execute,
+    )
+
+    table = Table(title="Azure VM Isolation")
+    table.add_column("Field")
+    table.add_column("Value")
+    table.add_row("VM", vm_name)
+    table.add_row("Subscription", subscription_id)
+    table.add_row("Resource group", resource_group)
+    table.add_row("Mode", "dry-run" if result.dry_run else "live")
+    table.add_row("Success", str(result.success))
+    table.add_row("Actions", str(len(result.actions_taken)))
+    console.print(table)
+
+    for action in result.actions_taken:
+        console.print(f"- {action}")
+    for error in result.errors:
+        console.print(f"[red]- {error}[/red]")
+
+    result_json = json.dumps(asdict(result), indent=2)
+    if output:
+        Path(output).write_text(result_json, encoding="utf-8")
+        console.print(f"[dim]Result written to: {output}[/dim]")
+    else:
+        click.echo(result_json)
+
+    if not result.success:
+        raise click.ClickException("Azure VM isolation did not complete successfully.")
 
 
 # ---------------------------------------------------------------------------

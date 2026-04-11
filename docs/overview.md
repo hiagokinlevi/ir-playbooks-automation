@@ -72,3 +72,7 @@
 ## S3 Exposure Containment Flow
 
 `k1n-ir lockdown-s3-bucket` exposes the AWS storage-containment workflow through the installed CLI. Dry-run mode is the default and records the current bucket public-access controls that live execution would preserve for rollback. Live containment enables the full S3 Public Access Block configuration, removes only public bucket policies, replaces public ACL grants with the private canned ACL, and tags the bucket for CloudTrail traceability.
+
+## Azure VM Containment Flow
+
+`k1n-ir isolate-azure-vm` exposes the Azure VM NSG-isolation workflow through the installed CLI. Dry-run mode is the default and records the saved rollback state that live execution would preserve. Live containment creates or reuses an incident-specific deny-all NSG, associates it with the VM's primary NIC, tags the VM and NIC for traceability, and can optionally deallocate the VM after approval.
