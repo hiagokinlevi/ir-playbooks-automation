@@ -71,7 +71,24 @@ class _StructlogFallback:
         return _BoundLogger(name)
 
 
+def _supports_structlog_api(candidate: Any) -> bool:
+    """Return True when the imported structlog object exposes the APIs we use."""
+    processors = getattr(candidate, "processors", None)
+    stdlib = getattr(candidate, "stdlib", None)
+    return all(
+        [
+            hasattr(candidate, "configure"),
+            hasattr(candidate, "get_logger"),
+            hasattr(processors, "TimeStamper"),
+            hasattr(processors, "JSONRenderer"),
+            hasattr(stdlib, "add_log_level"),
+        ]
+    )
+
+
 try:
-    import structlog as structlog  # type: ignore[import, no-redef]
+    import structlog as _structlog  # type: ignore[import]
 except ModuleNotFoundError:
     structlog = _StructlogFallback()
+else:
+    structlog = _structlog if _supports_structlog_api(_structlog) else _StructlogFallback()

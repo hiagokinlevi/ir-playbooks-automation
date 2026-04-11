@@ -79,6 +79,58 @@ def sha256_file(file_path: Path) -> str:
     return h.hexdigest()
 
 
+def _iter_source_files(source: Path) -> list[Path]:
+    """
+    Return regular files from a collection source while rejecting symlink escapes.
+
+    Evidence collection should be explicit about provenance. Symlinked files or
+    symlinked roots can silently pull data from outside the requested source tree.
+    """
+    if source.is_symlink():
+        raise ValueError(f"Symlinked source paths are not allowed: {source}")
+
+    if source.is_file():
+        return [source]
+
+    source_root = source.resolve(strict=True)
+    source_files: list[Path] = []
+
+    for current_root, dirnames, filenames in os.walk(source, followlinks=False):
+        current_dir = Path(current_root)
+
+        safe_dirnames: list[str] = []
+        for dirname in dirnames:
+            candidate_dir = current_dir / dirname
+            if candidate_dir.is_symlink():
+                log.warning("skipping_symlinked_directory", path=str(candidate_dir))
+                continue
+            safe_dirnames.append(dirname)
+        dirnames[:] = safe_dirnames
+
+        for filename in filenames:
+            candidate_file = current_dir / filename
+            if candidate_file.is_symlink():
+                log.warning("skipping_symlinked_file", path=str(candidate_file))
+                continue
+
+            resolved_file = candidate_file.resolve(strict=True)
+            try:
+                resolved_file.relative_to(source_root)
+            except ValueError:
+                log.warning(
+                    "skipping_path_outside_source_root",
+                    path=str(candidate_file),
+                    resolved_path=str(resolved_file),
+                    source_root=str(source_root),
+                )
+                continue
+
+            source_files.append(candidate_file)
+
+    source_files.sort()
+    return source_files
+
+
 def create_evidence_package(
     incident_id: str,
     source_path: Path | None = None,
@@ -134,22 +186,16 @@ def create_evidence_package(
         if not source.exists():
             raise FileNotFoundError(f"Source path does not exist: {source}")
 
-        # Resolve source files — handle both single file and directory
-        if source.is_file():
-            source_files = [source]
-        else:
-            # Walk the directory and collect all files
-            source_files = [f for f in source.rglob("*") if f.is_file()]
+        # Resolve source files while preventing symlink-based collection escapes.
+        source_files = _iter_source_files(source)
+        source_root = source.parent if source.is_file() else source
 
         for src_file in source_files:
             # Compute hash before copying (tamper-evidence)
             file_hash = sha256_file(src_file)
 
             # Preserve relative directory structure in the package
-            try:
-                rel_path = src_file.relative_to(source.parent if source.is_file() else source)
-            except ValueError:
-                rel_path = Path(src_file.name)  # Fallback to filename only
+            rel_path = src_file.relative_to(source_root)
 
             dest_file = files_dir / rel_path
             dest_file.parent.mkdir(parents=True, exist_ok=True)
