@@ -61,8 +61,28 @@ def test_create_evidence_package_rejects_symlink_source(tmp_path, monkeypatch) -
             analyst="analyst-01",
         )
 
+    assert not evidence_dir.exists()
 
-@pytest.mark.parametrize("incident_id", ["../INC-20260411-003", "/tmp/escape", r"..\\escape", "INC 2026 0411"])
+
+def test_create_evidence_package_rejects_missing_source_without_creating_package_dirs(
+    tmp_path, monkeypatch
+) -> None:
+    evidence_dir = tmp_path / "evidence"
+    missing_source = tmp_path / "missing"
+
+    monkeypatch.setattr(packager, "EVIDENCE_DIR", evidence_dir)
+
+    with pytest.raises(FileNotFoundError, match="Source path does not exist"):
+        packager.create_evidence_package(
+            incident_id="INC-20260411-003",
+            source_path=missing_source,
+            analyst="analyst-01",
+        )
+
+    assert not evidence_dir.exists()
+
+
+@pytest.mark.parametrize("incident_id", ["../INC-20260411-004", "/tmp/escape", r"..\\escape", "INC 2026 0411"])
 def test_create_evidence_package_rejects_path_like_incident_ids(
     tmp_path, monkeypatch, incident_id: str
 ) -> None:

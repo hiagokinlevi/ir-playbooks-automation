@@ -184,6 +184,18 @@ def create_evidence_package(
     """
     safe_incident_id = _validate_incident_id(incident_id)
 
+    source_files: list[Path] = []
+    source_root: Path | None = None
+    if source_path is not None:
+        source = Path(source_path)
+        if not source.exists():
+            raise FileNotFoundError(f"Source path does not exist: {source}")
+
+        # Validate the requested collection scope before creating package output
+        # so rejected runs do not leave behind empty evidence directories.
+        source_files = _iter_source_files(source)
+        source_root = source.parent if source.is_file() else source
+
     # Build the package directory path with a UTC timestamp to avoid collisions
     timestamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
     package_dir = EVIDENCE_DIR / safe_incident_id / timestamp
@@ -202,15 +214,7 @@ def create_evidence_package(
     file_inventory: list[dict] = []
 
     # Collect and hash files from the source path
-    if source_path is not None:
-        source = Path(source_path)
-        if not source.exists():
-            raise FileNotFoundError(f"Source path does not exist: {source}")
-
-        # Resolve source files while preventing symlink-based collection escapes.
-        source_files = _iter_source_files(source)
-        source_root = source.parent if source.is_file() else source
-
+    if source_root is not None:
         for src_file in source_files:
             # Compute hash before copying (tamper-evidence)
             file_hash = sha256_file(src_file)
