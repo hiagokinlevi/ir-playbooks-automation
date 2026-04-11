@@ -11,6 +11,8 @@ Commands:
     generate-report     Generate a Markdown report for an incident
     lockdown-s3-bucket
                         Preview or run S3 public-access containment
+    lockdown-gcs-bucket
+                        Preview or run GCS public-access containment
     isolate-azure-vm
                         Preview or run Azure VM network containment
     isolate-gcp-instance
@@ -542,6 +544,75 @@ def lockdown_s3_bucket_cmd(
 
     if not result.success:
         raise click.ClickException("S3 bucket lockdown did not complete successfully.")
+
+
+# ---------------------------------------------------------------------------
+# lockdown-gcs-bucket
+# ---------------------------------------------------------------------------
+
+@cli.command("lockdown-gcs-bucket")
+@click.option("--bucket-name", required=True, help="GCS bucket name.")
+@click.option("--incident-id", required=True, help="Incident ID for audit labeling.")
+@click.option(
+    "--project-id",
+    default=None,
+    help="Optional GCP project ID used for the storage client.",
+)
+@click.option(
+    "--execute",
+    is_flag=True,
+    help="Run live containment. Omit to keep the command in dry-run preview mode.",
+)
+@click.option("--output", "-o", default=None, type=click.Path(), help="Write result JSON.")
+def lockdown_gcs_bucket_cmd(
+    bucket_name: str,
+    incident_id: str,
+    project_id: Optional[str],
+    execute: bool,
+    output: Optional[str],
+) -> None:
+    """Preview or run reversible GCS bucket public-access lockdown."""
+    from dataclasses import asdict
+
+    from automations.cloud.lockdown_gcs_bucket import lockdown_gcs_bucket
+
+    if execute and os.getenv("APPROVAL_REQUIRED_FOR_CONTAINMENT", "true").lower() == "true":
+        click.confirm(
+            "Live GCS containment can remove public access immediately. Confirm approved execution",
+            abort=True,
+        )
+
+    result = lockdown_gcs_bucket(
+        bucket_name=bucket_name,
+        incident_id=incident_id,
+        project_id=project_id,
+        dry_run=not execute,
+    )
+
+    table = Table(title="GCS Bucket Lockdown")
+    table.add_column("Field")
+    table.add_column("Value")
+    table.add_row("Bucket", bucket_name)
+    table.add_row("Project", result.project_id or "(adc default)")
+    table.add_row("Mode", "dry-run" if result.dry_run else "live")
+    table.add_row("Success", str(result.success))
+    table.add_row("Actions", str(len(result.actions_taken)))
+    console.print(table)
+
+    for action in result.actions_taken:
+        console.print(f"- {action}")
+    for error in result.errors:
+        console.print(f"[red]- {error}[/red]")
+
+    result_json = json.dumps(asdict(result), indent=2)
+    if output:
+        Path(output).write_text(result_json, encoding="utf-8")
+        console.print(f"[dim]Result written to: {output}[/dim]")
+    else:
+        click.echo(result_json)
+
+    if not result.success:
+        raise click.ClickException("GCS bucket lockdown did not complete successfully.")
 
 
 # ---------------------------------------------------------------------------

@@ -53,7 +53,7 @@
 1. An alert fires in the SIEM or EDR. The analyst runs `k1n-ir open-incident` to create a formal record.
 2. The record is initialized with status `DETECTED`. The state machine manages subsequent transitions.
 3. The analyst follows the appropriate playbook (retrieved via `k1n-ir start-playbook`).
-4. Automation scripts (AWS EC2 isolation, S3 bucket lockdown, Azure VM isolation, GCP Compute Engine isolation, session revocation, evidence packaging) are called as needed.
+4. Automation scripts (AWS EC2 isolation, S3 and GCS bucket lockdown, Azure VM isolation, GCP Compute Engine isolation, session revocation, evidence packaging) are called as needed.
 5. Evidence items are recorded in the incident record with SHA-256 hashes.
 6. Reports and communications are generated from templates populated with incident data.
 7. The incident is closed via the state machine after PIR.
@@ -68,6 +68,10 @@
 ## GCP Containment Flow
 
 `k1n-ir isolate-gcp-instance` exposes the Compute Engine isolation automation through the installed CLI. Dry-run mode is the default and records the tag, firewall-rule names, and rollback state that live execution would use. Live containment adds an incident-specific network tag, creates deny-all ingress and egress firewall rules for that tag, applies traceability labels, and can optionally stop the instance after approval.
+
+## GCS Exposure Containment Flow
+
+`k1n-ir lockdown-gcs-bucket` exposes the GCS storage-containment workflow through the installed CLI. Dry-run mode is the default and records the current IAM policy, labels, public access prevention state, and uniform bucket-level access state that live execution would preserve for rollback. Live containment enforces public access prevention, enables uniform bucket-level access, removes public IAM principals, and adds incident labels for Cloud Audit Log traceability.
 
 ## S3 Exposure Containment Flow
 

@@ -9,7 +9,7 @@
 `ir-playbooks-automation` is a structured, practitioner-focused toolkit for Security Operations Center (SOC) analysts, incident responders, and blue teamers. It provides:
 
 - **Operational playbooks** covering triage, containment, eradication, and recovery phases
-- **Automation scripts** for safe, auditable containment actions (AWS isolation, S3 lockdown, GCP VM isolation, Azure session revocation, evidence packaging)
+- **Automation scripts** for safe, auditable containment actions (AWS isolation, S3 lockdown, GCS bucket lockdown, GCP VM isolation, Azure session revocation, evidence packaging)
 - **Incident record and report templates** for consistent documentation
 - **Pydantic data schemas** for machine-readable incident state
 - **CLI tooling** for opening incidents, managing severity, running playbooks, and generating reports
@@ -102,6 +102,13 @@ k1n-ir lockdown-s3-bucket \
   --incident-id INC-20250101-001 \
   --output s3-lockdown-preview.json
 
+# Preview GCS public-access lockdown before live containment
+k1n-ir lockdown-gcs-bucket \
+  --bucket-name exposed-data-bucket \
+  --incident-id INC-20250101-001 \
+  --project-id blue-project \
+  --output gcs-lockdown-preview.json
+
 # Preview Azure VM NSG isolation before live containment
 k1n-ir isolate-azure-vm \
   --subscription-id 00000000-0000-0000-0000-000000000000 \
@@ -143,6 +150,7 @@ k1n-ir isolate-gcp-instance \
 | `evidence_packaging/packager.py` | Any | Creates structured evidence packages with SHA-256 manifest |
 | `cloud/isolate_aws_instance.py` | AWS | Isolates EC2 instance via isolation security group |
 | `cloud/lockdown_s3_bucket.py` | AWS | Locks down public S3 buckets and preserves rollback state |
+| `cloud/lockdown_gcs_bucket.py` | GCP | Locks down public GCS buckets, enforces PAP/UBLA, and preserves rollback state |
 | `cloud/isolate_azure_vm.py` | Azure | Isolates Azure VMs with incident NSG rules and rollback state |
 | `cloud/isolate_gcp_instance.py` | GCP | Isolates Compute Engine VMs with deny-all firewall tags and rollback state |
 | `identity/revoke_azure_sessions.ps1` | Azure AD | Revokes all active sessions for a compromised user |
@@ -160,6 +168,12 @@ Use `--execute` only after containment approval. Live mode requires the Azure id
 The installed `k1n-ir isolate-gcp-instance` command runs in dry-run mode by default. It previews the incident-specific network tag, ingress deny-all firewall rule, egress deny-all firewall rule, saved rollback state, and optional stop action without calling GCP APIs.
 
 Use `--execute` only after containment approval. When `APPROVAL_REQUIRED_FOR_CONTAINMENT=true`, the CLI prompts before live execution. Live mode uses Application Default Credentials and requires Compute Engine instance administration plus firewall-rule permissions.
+
+### GCS Bucket Exposure Containment
+
+The installed `k1n-ir lockdown-gcs-bucket` command previews a bucket lockdown by default. It records the bucket IAM policy, labels, public-access-prevention setting, and uniform bucket-level access state for rollback, then shows the public-principal removal and incident-labeling steps that live mode would apply.
+
+Use `--execute` only after containment approval. Live mode requires `google-cloud-storage` support (`pip install -e .[gcp]` or `pip install google-cloud-storage`) plus the bucket read/write IAM permissions listed in `automations/cloud/lockdown_gcs_bucket.py`.
 
 ### S3 Bucket Exposure Containment
 

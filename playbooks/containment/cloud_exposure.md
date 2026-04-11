@@ -81,6 +81,23 @@ k1n-ir lockdown-s3-bucket \
   --execute
 ```
 
+### GCS Bucket (GCP)
+```bash
+# Preview the lockdown and save rollback state to a file
+k1n-ir lockdown-gcs-bucket \
+  --bucket-name <bucket-name> \
+  --incident-id <INC-ID> \
+  --project-id <project-id> \
+  --output gcs-lockdown-preview.json
+
+# Execute only after containment approval
+k1n-ir lockdown-gcs-bucket \
+  --bucket-name <bucket-name> \
+  --incident-id <INC-ID> \
+  --project-id <project-id> \
+  --execute
+```
+
 ### EC2 Instance (AWS) — Network Exposure
 ```bash
 # Isolate via automation script (dry_run=False requires approval)
