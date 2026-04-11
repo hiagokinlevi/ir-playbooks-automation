@@ -290,6 +290,12 @@ class TestURL:
         result = enricher.match([ioc], events)
         assert len(result.matches) == 1
 
+    def test_url_match_strips_surrounding_whitespace(self):
+        ioc = make_ioc(IOCType.URL, "  evil.com/path  ")
+        events = [{"url": "  http://evil.com/path/file  "}]
+        result = enricher.match([ioc], events)
+        assert len(result.matches) == 1
+
     def test_url_no_match_unrelated(self):
         ioc = make_ioc(IOCType.URL, "evil.com/malware")
         events = [{"url": "https://safe.example.com/page"}]
@@ -925,6 +931,16 @@ class TestMiscellaneous:
         )
         assert ioc.source == "unknown"
 
+    def test_blank_source_normalized_to_unknown(self):
+        ioc = ThreatIOC(
+            ioc_type=IOCType.EMAIL,
+            value="x@y.z",
+            severity="low",
+            confidence=0.5,
+            source="   ",
+        )
+        assert ioc.source == "unknown"
+
     def test_default_tags_empty(self):
         ioc = ThreatIOC(
             ioc_type=IOCType.EMAIL,
@@ -933,6 +949,45 @@ class TestMiscellaneous:
             confidence=0.5,
         )
         assert ioc.tags == []
+
+    def test_tags_are_trimmed_and_deduplicated(self):
+        ioc = ThreatIOC(
+            ioc_type=IOCType.EMAIL,
+            value="x@y.z",
+            severity="low",
+            confidence=0.5,
+            tags=[" phishing ", "phishing", "", " c2 "],
+        )
+        assert ioc.tags == ["phishing", "c2"]
+
+    @pytest.mark.parametrize("value", ["", "   "])
+    def test_blank_ioc_value_rejected(self, value: str):
+        with pytest.raises(ValueError, match="IOC value must contain non-whitespace characters"):
+            ThreatIOC(
+                ioc_type=IOCType.URL,
+                value=value,
+                severity="HIGH",
+                confidence=0.5,
+            )
+
+    @pytest.mark.parametrize("confidence", [float("nan"), float("inf"), -0.1, 1.1])
+    def test_out_of_range_or_non_finite_confidence_rejected(self, confidence: float):
+        with pytest.raises(ValueError, match="IOC confidence must be a finite number between 0.0 and 1.0"):
+            ThreatIOC(
+                ioc_type=IOCType.URL,
+                value="evil.com",
+                severity="HIGH",
+                confidence=confidence,
+            )
+
+    def test_invalid_severity_rejected(self):
+        with pytest.raises(ValueError, match="IOC severity must be one of"):
+            ThreatIOC(
+                ioc_type=IOCType.URL,
+                value="evil.com",
+                severity="urgent",
+                confidence=0.5,
+            )
 
     def test_type_weights_all_types_present(self):
         for t in IOCType:

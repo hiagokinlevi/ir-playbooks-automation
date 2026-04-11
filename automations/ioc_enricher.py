@@ -43,6 +43,7 @@ Quick-start
 """
 from __future__ import annotations
 
+import math
 import os
 from dataclasses import dataclass, field
 from enum import Enum
@@ -87,6 +88,8 @@ _TYPE_WEIGHTS: Dict[str, int] = {
     IOCType.PROCESS_NAME.value:  25,
 }
 
+_VALID_SEVERITIES = {"CRITICAL", "HIGH", "MEDIUM", "LOW"}
+
 
 # ---------------------------------------------------------------------------
 # ThreatIOC
@@ -119,6 +122,14 @@ class ThreatIOC:
     confidence: float
     source: str = "unknown"
     tags: List[str] = field(default_factory=list)
+
+    def __post_init__(self) -> None:
+        """Normalize basic IOC fields before they participate in matching."""
+        self.value = _normalize_required_text(self.value, field_name="IOC value")
+        self.severity = _normalize_severity(self.severity)
+        self.confidence = _normalize_confidence(self.confidence)
+        self.source = _normalize_optional_text(self.source, default="unknown")
+        self.tags = _normalize_tags(self.tags)
 
     def to_dict(self) -> dict:
         """Serialise to a plain ``dict`` suitable for JSON encoding."""
@@ -404,6 +415,71 @@ class IOCEnricher:
 # Internal helpers
 # ---------------------------------------------------------------------------
 
+
+def _normalize_required_text(value: object, *, field_name: str) -> str:
+    """Return stripped text and reject blank or non-string values."""
+    if not isinstance(value, str):
+        raise TypeError(f"{field_name} must be a string")
+
+    normalized = value.strip()
+    if not normalized:
+        raise ValueError(f"{field_name} must contain non-whitespace characters")
+    return normalized
+
+
+def _normalize_optional_text(value: object, *, default: str) -> str:
+    """Return stripped text, or a default when omitted or blank."""
+    if value is None:
+        return default
+    if not isinstance(value, str):
+        raise TypeError("IOC source must be a string")
+
+    normalized = value.strip()
+    return normalized or default
+
+
+def _normalize_severity(value: object) -> str:
+    """Return a canonical uppercase severity string."""
+    normalized = _normalize_required_text(value, field_name="IOC severity").upper()
+    if normalized not in _VALID_SEVERITIES:
+        allowed = ", ".join(sorted(_VALID_SEVERITIES))
+        raise ValueError(f"IOC severity must be one of: {allowed}")
+    return normalized
+
+
+def _normalize_confidence(value: object) -> float:
+    """Coerce confidence to float and reject non-finite or out-of-range values."""
+    try:
+        normalized = float(value)
+    except (TypeError, ValueError) as exc:
+        raise TypeError("IOC confidence must be a number") from exc
+
+    if not math.isfinite(normalized) or not 0.0 <= normalized <= 1.0:
+        raise ValueError("IOC confidence must be a finite number between 0.0 and 1.0")
+    return normalized
+
+
+def _normalize_tags(tags: object) -> List[str]:
+    """Keep non-empty tag strings and trim surrounding whitespace."""
+    if tags is None:
+        return []
+    if not isinstance(tags, list):
+        raise TypeError("IOC tags must be a list of strings")
+
+    normalized_tags: List[str] = []
+    seen: set[str] = set()
+    for tag in tags:
+        if not isinstance(tag, str):
+            raise TypeError("IOC tags must be a list of strings")
+
+        normalized = tag.strip()
+        if not normalized or normalized in seen:
+            continue
+        seen.add(normalized)
+        normalized_tags.append(normalized)
+
+    return normalized_tags
+
 def _extract_strings(event: dict) -> List[Tuple[str, str]]:
     """Recursively extract all (field_path, string_value) pairs from an event.
 
@@ -473,7 +549,9 @@ def _ioc_matches(ioc: ThreatIOC, value: str) -> bool:
         ``True`` if the value matches the IOC according to the type rules.
     """
     ioc_val_lower = ioc.value.lower()
-    val_lower = value.lower()
+    val_lower = value.strip().lower()
+    if not val_lower:
+        return False
 
     if ioc.ioc_type == IOCType.IP_ADDRESS:
         # Exact match only — avoid false positives on partial IP strings.
