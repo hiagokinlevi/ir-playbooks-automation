@@ -187,6 +187,22 @@ class PcapTrigger:
         max_sec = max_seconds if max_seconds is not None else self._max_seconds
         max_pkt = max_packets if max_packets is not None else self._max_packets
         started = time.time()
+        validation_error = self._validate_capture_request(
+            interface=interface,
+            max_seconds=max_sec,
+            max_packets=max_pkt,
+        )
+        if validation_error:
+            return CaptureResult(
+                status=CaptureStatus.FAILED,
+                backend="",
+                interface=interface,
+                bpf_filter=bpf_filter,
+                label=label,
+                started_at=started,
+                error=validation_error,
+                dry_run=self._dry_run,
+            )
 
         backend_bin = self._resolve_backend()
         if backend_bin is None:
@@ -241,6 +257,25 @@ class PcapTrigger:
         if shutil.which("tshark"):
             return "tshark"
         return None
+
+    def _validate_capture_request(
+        self,
+        *,
+        interface: str,
+        max_seconds: int,
+        max_packets: int,
+    ) -> str:
+        if not interface or not interface.strip():
+            return "interface must not be empty"
+        if any(ch.isspace() for ch in interface):
+            return "interface must not contain whitespace"
+        if any(ord(ch) < 32 or ord(ch) == 127 for ch in interface):
+            return "interface must not contain control characters"
+        if max_seconds <= 0:
+            return "max_seconds must be greater than 0"
+        if max_packets <= 0:
+            return "max_packets must be greater than 0"
+        return ""
 
     def _output_path(self, interface: str, label: str, ts: float) -> Path:
         """Build a timestamped output file path."""

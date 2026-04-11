@@ -208,6 +208,26 @@ class TestDryRun:
             result = trigger.capture(interface="eth0", bpf_filter="")
         assert "-f" not in result.command
 
+    def test_empty_interface_fails_fast(self):
+        result = self._run(interface="")
+        assert result.status == CaptureStatus.FAILED
+        assert result.error == "interface must not be empty"
+
+    def test_interface_with_whitespace_fails_fast(self):
+        result = self._run(interface="eth 0")
+        assert result.status == CaptureStatus.FAILED
+        assert result.error == "interface must not contain whitespace"
+
+    def test_non_positive_max_seconds_fails_fast(self):
+        result = self._run(max_seconds=0)
+        assert result.status == CaptureStatus.FAILED
+        assert result.error == "max_seconds must be greater than 0"
+
+    def test_non_positive_max_packets_fails_fast(self):
+        result = self._run(max_packets=0)
+        assert result.status == CaptureStatus.FAILED
+        assert result.error == "max_packets must be greater than 0"
+
 
 # ===========================================================================
 # PcapTrigger — output path
