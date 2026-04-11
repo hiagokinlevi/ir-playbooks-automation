@@ -162,11 +162,11 @@ RUNBOOK_REGISTRY: list[PlaybookRef] = [
             IncidentType.DATA_EXPOSURE,
         }),
         description=(
-            "Isolate exposed cloud resources (EC2, Azure VM), tighten security "
-            "groups/NSGs, and prevent further data exfiltration from misconfigured "
-            "or compromised cloud infrastructure."
+            "Lock down exposed cloud resources (S3, EC2, Azure VM, GCP Compute), "
+            "tighten bucket policies and network controls, and prevent further "
+            "data exfiltration from misconfigured or compromised infrastructure."
         ),
-        automation_ref="automations.cloud.isolate_aws_instance",
+        automation_ref="automations.cloud.lockdown_s3_bucket",
     ),
 
     # ── Eradication ───────────────────────────────────────────────────────

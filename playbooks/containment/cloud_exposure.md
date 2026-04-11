@@ -68,15 +68,17 @@ Manually capture:
 
 ### S3 Bucket (AWS)
 ```bash
-# Remove public access block override (enforces account-level public access block)
-aws s3api put-public-access-block \
-  --bucket <bucket-name> \
-  --public-access-block-configuration \
-    "BlockPublicAcls=true,IgnorePublicAcls=true,BlockPublicPolicy=true,RestrictPublicBuckets=true"
+# Preview the lockdown and save rollback state to a file
+k1n-ir lockdown-s3-bucket \
+  --bucket-name <bucket-name> \
+  --incident-id <INC-ID> \
+  --output s3-lockdown-preview.json
 
-# Remove any bucket policy allowing public access
-aws s3api get-bucket-policy --bucket <bucket-name>   # Review first
-aws s3api delete-bucket-policy --bucket <bucket-name> # If policy is the problem
+# Execute only after containment approval
+k1n-ir lockdown-s3-bucket \
+  --bucket-name <bucket-name> \
+  --incident-id <INC-ID> \
+  --execute
 ```
 
 ### EC2 Instance (AWS) — Network Exposure

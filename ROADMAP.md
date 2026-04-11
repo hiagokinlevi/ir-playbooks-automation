@@ -7,7 +7,7 @@ This roadmap outlines planned improvements and features. Priorities may shift ba
 ## v1.1 — Expanded Cloud Coverage
 
 - [ ] Azure VM network isolation via NSG automation
-- [ ] S3 bucket public-access lockdown automation
+- [x] S3 bucket public-access lockdown automation
 - [ ] GCS bucket exposure containment
 
 ## v1.2 — Enhanced Evidence Collection
@@ -51,7 +51,7 @@ This roadmap outlines planned improvements and features. Priorities may shift ba
 - [x] Evidence packaging with SHA-256 manifest
 - [x] Pydantic incident schemas
 - [x] Incident state machine
-- [x] Click CLI (open-incident, set-severity, start-playbook, create-timeline, generate-report, isolate-gcp-instance)
+- [x] Click CLI (open-incident, set-severity, start-playbook, create-timeline, generate-report, lockdown-s3-bucket, isolate-gcp-instance)
 
 ---
 

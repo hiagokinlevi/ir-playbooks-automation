@@ -25,6 +25,9 @@ dependencies = [
 
 [project.optional-dependencies]
 # Development and testing dependencies — not needed in production
+aws = [
+    "boto3>=1.34",           # AWS SDK for live containment automations
+]
 dev = [
     "pytest>=7.4",           # Test runner
     "pytest-cov>=4.1",       # Coverage reporting

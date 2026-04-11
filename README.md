@@ -9,7 +9,7 @@
 `ir-playbooks-automation` is a structured, practitioner-focused toolkit for Security Operations Center (SOC) analysts, incident responders, and blue teamers. It provides:
 
 - **Operational playbooks** covering triage, containment, eradication, and recovery phases
-- **Automation scripts** for safe, auditable containment actions (AWS isolation, GCP VM isolation, Azure session revocation, evidence packaging)
+- **Automation scripts** for safe, auditable containment actions (AWS isolation, S3 lockdown, GCP VM isolation, Azure session revocation, evidence packaging)
 - **Incident record and report templates** for consistent documentation
 - **Pydantic data schemas** for machine-readable incident state
 - **CLI tooling** for opening incidents, managing severity, running playbooks, and generating reports
@@ -70,6 +70,9 @@ source .venv/bin/activate  # On Windows: .venv\Scripts\activate
 # Install dependencies
 pip install -e .
 
+# Install AWS automation support only when you need live AWS containment
+pip install -e .[aws]
+
 # Offline/dependency-light validation path
 pip install -e . --no-deps --no-build-isolation
 
@@ -92,6 +95,12 @@ k1n-ir set-severity --incident-id INC-20250101-001 --severity critical
 
 # Generate a technical report
 k1n-ir generate-report --incident-id INC-20250101-001 --format markdown
+
+# Preview S3 public-access lockdown before live containment
+k1n-ir lockdown-s3-bucket \
+  --bucket-name exposed-data-bucket \
+  --incident-id INC-20250101-001 \
+  --output s3-lockdown-preview.json
 
 # Preview GCP Compute Engine isolation before live containment
 k1n-ir isolate-gcp-instance \
@@ -125,6 +134,7 @@ k1n-ir isolate-gcp-instance \
 |--------|----------|-------------|
 | `evidence_packaging/packager.py` | Any | Creates structured evidence packages with SHA-256 manifest |
 | `cloud/isolate_aws_instance.py` | AWS | Isolates EC2 instance via isolation security group |
+| `cloud/lockdown_s3_bucket.py` | AWS | Locks down public S3 buckets and preserves rollback state |
 | `cloud/isolate_azure_vm.py` | Azure | Isolates Azure VMs with incident NSG rules and rollback state |
 | `cloud/isolate_gcp_instance.py` | GCP | Isolates Compute Engine VMs with deny-all firewall tags and rollback state |
 | `identity/revoke_azure_sessions.ps1` | Azure AD | Revokes all active sessions for a compromised user |
@@ -136,6 +146,12 @@ k1n-ir isolate-gcp-instance \
 The installed `k1n-ir isolate-gcp-instance` command runs in dry-run mode by default. It previews the incident-specific network tag, ingress deny-all firewall rule, egress deny-all firewall rule, saved rollback state, and optional stop action without calling GCP APIs.
 
 Use `--execute` only after containment approval. When `APPROVAL_REQUIRED_FOR_CONTAINMENT=true`, the CLI prompts before live execution. Live mode uses Application Default Credentials and requires Compute Engine instance administration plus firewall-rule permissions.
+
+### S3 Bucket Exposure Containment
+
+The installed `k1n-ir lockdown-s3-bucket` command previews a bucket lockdown by default. It records the bucket's public access block, bucket policy, ACL grants, and tag set for rollback, then shows the Public Access Block, public-policy removal, ACL hardening, and incident-tagging steps that live mode would apply.
+
+Use `--execute` only after containment approval. Live mode requires boto3 support (`pip install -e .[aws]` or `pip install boto3`) plus the S3 permissions listed in `automations/cloud/lockdown_s3_bucket.py`.
 
 ---
 
