@@ -28,6 +28,7 @@ import hashlib
 import json
 import logging
 import os
+import re
 import shutil
 from datetime import datetime, timezone
 from pathlib import Path
@@ -58,6 +59,8 @@ EVIDENCE_DIR = Path(os.getenv("EVIDENCE_DIR", "./evidence"))
 
 # When masking mode is on, skip content inspection and only record file metadata
 MASKING_MODE = os.getenv("MASKING_MODE", "true").lower() == "true"
+
+INCIDENT_ID_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_-]{0,127}$")
 
 
 def sha256_file(file_path: Path) -> str:
@@ -131,6 +134,21 @@ def _iter_source_files(source: Path) -> list[Path]:
     return source_files
 
 
+def _validate_incident_id(incident_id: str) -> str:
+    """
+    Allow only simple incident identifiers before building package paths.
+
+    This blocks traversal strings, path separators, and whitespace-bearing values
+    from escaping the evidence root or creating ambiguous package locations.
+    """
+    if not INCIDENT_ID_RE.fullmatch(incident_id):
+        raise ValueError(
+            "Incident ID must start with an alphanumeric character and contain only "
+            "letters, numbers, hyphens, or underscores"
+        )
+    return incident_id
+
+
 def create_evidence_package(
     incident_id: str,
     source_path: Path | None = None,
@@ -162,10 +180,13 @@ def create_evidence_package(
     Raises:
         FileNotFoundError: If source_path is provided but does not exist.
         PermissionError: If the evidence directory cannot be created or written to.
+        ValueError: If incident_id is not safe to use as a package directory name.
     """
+    safe_incident_id = _validate_incident_id(incident_id)
+
     # Build the package directory path with a UTC timestamp to avoid collisions
     timestamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
-    package_dir = EVIDENCE_DIR / incident_id / timestamp
+    package_dir = EVIDENCE_DIR / safe_incident_id / timestamp
     files_dir = package_dir / "files"
 
     # Create directories — exist_ok=False ensures we don't silently overwrite
@@ -173,7 +194,7 @@ def create_evidence_package(
     files_dir.mkdir(parents=True, exist_ok=True)
 
     log.info("evidence_package_started",
-             incident_id=incident_id,
+             incident_id=safe_incident_id,
              package_dir=str(package_dir),
              source_type=source_type,
              analyst=analyst)
@@ -210,7 +231,7 @@ def create_evidence_package(
             })
 
             log.info("file_collected",
-                     incident_id=incident_id,
+                     incident_id=safe_incident_id,
                      file=str(rel_path),
                      sha256=file_hash,
                      size_bytes=src_file.stat().st_size)
@@ -218,7 +239,7 @@ def create_evidence_package(
     # Write the manifest file — provides a complete audit record of the package
     manifest = {
         "schema_version": "1.0",                    # Version this format for future compatibility
-        "incident_id": incident_id,
+        "incident_id": safe_incident_id,
         "package_created_at": timestamp,
         "source_type": source_type,                  # What kind of evidence this is
         "analyst": analyst,
@@ -250,7 +271,7 @@ def create_evidence_package(
         )
 
     log.info("evidence_package_complete",
-             incident_id=incident_id,
+             incident_id=safe_incident_id,
              package_dir=str(package_dir),
              file_count=len(file_inventory),
              manifest_sha256=manifest_hash)

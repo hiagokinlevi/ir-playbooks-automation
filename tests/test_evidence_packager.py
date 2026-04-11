@@ -60,3 +60,17 @@ def test_create_evidence_package_rejects_symlink_source(tmp_path, monkeypatch) -
             source_path=symlink_source,
             analyst="analyst-01",
         )
+
+
+@pytest.mark.parametrize("incident_id", ["../INC-20260411-003", "/tmp/escape", r"..\\escape", "INC 2026 0411"])
+def test_create_evidence_package_rejects_path_like_incident_ids(
+    tmp_path, monkeypatch, incident_id: str
+) -> None:
+    evidence_dir = tmp_path / "evidence"
+    monkeypatch.setattr(packager, "EVIDENCE_DIR", evidence_dir)
+
+    with pytest.raises(ValueError, match="Incident ID must start with an alphanumeric character"):
+        packager.create_evidence_package(
+            incident_id=incident_id,
+            analyst="analyst-01",
+        )
