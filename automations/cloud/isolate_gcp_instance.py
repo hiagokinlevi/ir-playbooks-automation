@@ -55,6 +55,7 @@ from datetime import datetime, timezone
 from typing import Any, Optional
 
 log = logging.getLogger(__name__)
+_NETWORK_SEGMENT_RE = re.compile(r"^[a-z0-9][a-z0-9._-]*$", re.IGNORECASE)
 
 
 # ---------------------------------------------------------------------------
@@ -98,6 +99,64 @@ def _timestamp() -> str:
     return datetime.now(tz=timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
+def _normalize_required_identifier(value: object, *, field_name: str) -> str:
+    """Reject blank, control-character, whitespace, or path-like identifiers."""
+    if not isinstance(value, str):
+        raise ValueError(f"{field_name} must be a string")
+
+    normalized = value.strip()
+    if not normalized:
+        raise ValueError(f"{field_name} must not be blank")
+    if any(ord(ch) < 32 or ord(ch) == 127 for ch in normalized):
+        raise ValueError(f"{field_name} must not contain control characters")
+    if "/" in normalized or "\\" in normalized:
+        raise ValueError(f"{field_name} must not contain path separators")
+    if any(ch.isspace() for ch in normalized):
+        raise ValueError(f"{field_name} must not contain whitespace")
+    return normalized
+
+
+def _normalize_network_path(network: object) -> str:
+    """Validate a relative Compute Engine network resource path."""
+    if not isinstance(network, str):
+        raise ValueError("Network path must be a string")
+
+    normalized = network.strip()
+    if not normalized:
+        raise ValueError("Network path must not be blank")
+    if any(ord(ch) < 32 or ord(ch) == 127 for ch in normalized):
+        raise ValueError("Network path must not contain control characters")
+    if any(ch.isspace() for ch in normalized):
+        raise ValueError("Network path must not contain whitespace")
+    if normalized.startswith("/"):
+        raise ValueError("Network path must be relative, not absolute")
+    if "\\" in normalized:
+        raise ValueError("Network path must use forward slashes only")
+    if "://" in normalized:
+        raise ValueError("Network path must not be a URL")
+
+    parts = normalized.split("/")
+    if any(part in {"", ".", ".."} for part in parts):
+        raise ValueError("Network path must not contain empty, '.' or '..' segments")
+    if any(_NETWORK_SEGMENT_RE.fullmatch(part) is None for part in parts):
+        raise ValueError("Network path contains unsupported characters")
+
+    is_global_path = len(parts) == 3 and parts[0] == "global" and parts[1] == "networks"
+    is_project_path = (
+        len(parts) == 5
+        and parts[0] == "projects"
+        and parts[2] == "global"
+        and parts[3] == "networks"
+    )
+    if not (is_global_path or is_project_path):
+        raise ValueError(
+            "Network path must use 'global/networks/<name>' or "
+            "'projects/<project>/global/networks/<name>'"
+        )
+
+    return normalized
+
+
 def _isolation_tag(incident_id: str) -> str:
     """
     Return a GCP-safe network tag derived from the incident ID.
@@ -106,6 +165,8 @@ def _isolation_tag(incident_id: str) -> str:
     starting with a letter. Max 63 characters.
     """
     slug = re.sub(r"[^a-z0-9-]", "-", incident_id.lower()).strip("-")
+    if not slug:
+        raise ValueError("Incident ID must contain at least one letter or number")
     tag = f"k1n-ir-isolated-{slug}"
     return tag[:63]
 
@@ -113,6 +174,8 @@ def _isolation_tag(incident_id: str) -> str:
 def _firewall_rule_name(incident_id: str) -> str:
     """Return a GCP-safe firewall rule name for the isolation rule."""
     slug = re.sub(r"[^a-z0-9-]", "-", incident_id.lower()).strip("-")
+    if not slug:
+        raise ValueError("Incident ID must contain at least one letter or number")
     name = f"k1n-ir-deny-all-{slug}"
     return name[:63]
 
@@ -216,6 +279,12 @@ def isolate_gcp_instance(
     Returns:
         GcpIsolationResult with actions_taken, saved_state, and success flag.
     """
+    project_id = _normalize_required_identifier(project_id, field_name="Project ID")
+    zone = _normalize_required_identifier(zone, field_name="Zone")
+    instance_name = _normalize_required_identifier(instance_name, field_name="Instance name")
+    incident_id = _normalize_required_identifier(incident_id, field_name="Incident ID")
+    network = _normalize_network_path(network)
+
     result = GcpIsolationResult(
         success=False,
         dry_run=dry_run,
@@ -386,6 +455,12 @@ def restore_gcp_instance(
     Returns:
         GcpIsolationResult with actions_taken and success flag.
     """
+    project_id = _normalize_required_identifier(project_id, field_name="Project ID")
+    zone = _normalize_required_identifier(zone, field_name="Zone")
+    instance_name = _normalize_required_identifier(instance_name, field_name="Instance name")
+    if not isinstance(saved_state, dict):
+        raise ValueError("saved_state must be a dict returned by isolate_gcp_instance()")
+
     result = GcpIsolationResult(
         success=False,
         dry_run=dry_run,

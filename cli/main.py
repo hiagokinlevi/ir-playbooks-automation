@@ -701,15 +701,18 @@ def isolate_gcp_instance_cmd(
             abort=True,
         )
 
-    result = isolate_gcp_instance(
-        project_id=project_id,
-        zone=zone,
-        instance_name=instance_name,
-        incident_id=incident_id,
-        network=network,
-        stop_instance=stop_instance,
-        dry_run=not execute,
-    )
+    try:
+        result = isolate_gcp_instance(
+            project_id=project_id,
+            zone=zone,
+            instance_name=instance_name,
+            incident_id=incident_id,
+            network=network,
+            stop_instance=stop_instance,
+            dry_run=not execute,
+        )
+    except ValueError as exc:
+        raise click.ClickException(str(exc)) from exc
 
     table = Table(title="GCP Instance Isolation")
     table.add_column("Field")

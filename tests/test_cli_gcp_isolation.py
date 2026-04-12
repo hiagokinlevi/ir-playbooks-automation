@@ -63,3 +63,25 @@ def test_isolate_gcp_instance_writes_json_output(tmp_path) -> None:
     payload = json.loads(output_path.read_text(encoding="utf-8"))
     assert payload["saved_state"]["stop_instance"] is True
     assert any("stop instance" in action.lower() for action in payload["actions_taken"])
+
+
+def test_isolate_gcp_instance_rejects_path_like_instance_name() -> None:
+    runner = CliRunner()
+
+    result = runner.invoke(
+        cli,
+        [
+            "isolate-gcp-instance",
+            "--project-id",
+            "prod-project",
+            "--zone",
+            "us-central1-a",
+            "--instance-name",
+            "../web-01",
+            "--incident-id",
+            "INC-2026-067",
+        ],
+    )
+
+    assert result.exit_code != 0
+    assert "Instance name must not contain path separators" in result.output

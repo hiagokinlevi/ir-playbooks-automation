@@ -87,6 +87,13 @@ class TestGcpNamingAndMetadata:
         assert metadata["k1n-ir-automated"] == "true"
         assert metadata["k1n-ir-timestamp"].endswith("Z")
 
+    def test_isolation_tag_rejects_all_punctuation_incident_ids(self):
+        try:
+            _isolation_tag("!!!")
+            assert False, "expected ValueError"
+        except ValueError as exc:
+            assert "Incident ID must contain at least one letter or number" in str(exc)
+
 
 class TestIsolateGcpInstanceDryRun:
     def _run(self, **kwargs):
@@ -132,6 +139,20 @@ class TestIsolateGcpInstanceDryRun:
         assert result.completed_at is not None
         assert result.completed_at.endswith("Z")
 
+    def test_rejects_path_like_instance_name(self):
+        try:
+            self._run(instance_name="../compromised-vm")
+            assert False, "expected ValueError"
+        except ValueError as exc:
+            assert "Instance name must not contain path separators" in str(exc)
+
+    def test_rejects_url_like_network_path(self):
+        try:
+            self._run(network="https://compute.googleapis.com/projects/x/global/networks/default")
+            assert False, "expected ValueError"
+        except ValueError as exc:
+            assert "Network path must not be a URL" in str(exc)
+
 
 class TestRestoreGcpInstanceDryRun:
     saved_state = {
@@ -159,6 +180,19 @@ class TestRestoreGcpInstanceDryRun:
         assert "k1n-ir-deny-all-inc-2026-099-ingress" in text
         assert "k1n-ir-deny-all-inc-2026-099-egress" in text
         assert "Would start instance" in text
+
+    def test_restore_rejects_non_dict_saved_state(self):
+        try:
+            restore_gcp_instance(
+                project_id="ir-project",
+                zone="us-central1-a",
+                instance_name="compromised-vm",
+                saved_state="invalid",
+                dry_run=True,
+            )
+            assert False, "expected ValueError"
+        except ValueError as exc:
+            assert "saved_state must be a dict returned by isolate_gcp_instance()" in str(exc)
 
 
 class TestGcpMissingSdk:
