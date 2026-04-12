@@ -87,6 +87,8 @@ def _resolve_playbook_path(playbook: str) -> Path:
     requested = (playbook or "").strip()
     if not requested:
         raise click.ClickException("Playbook path must not be empty.")
+    if Path(requested).is_absolute():
+        raise click.ClickException("Playbook path must be relative to playbooks/.")
 
     playbooks_root = PLAYBOOKS_DIR.resolve(strict=True)
     candidates = [
