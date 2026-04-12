@@ -1,0 +1,13 @@
+{
+  "finished_at_utc": "2026-04-11T21:31:30Z",
+  "head_commit": "376762ab5a62dbdef189365063fc06de28ee4cc4",
+  "remote_main": "376762ab5a62dbdef189365063fc06de28ee4cc4\trefs/heads/main",
+  "remote_main_before": "f6a049a34498eccb631aceb05dce661ca31ff0e9\trefs/heads/main",
+  "repo_path": "/Users/hiagokin/ir-playbooks-automation",
+  "request_id": "20260411T183034-7b6d58f4433f",
+  "started_at_utc": "2026-04-11T21:31:28Z",
+  "status": "success",
+  "stderr": "To https://github.com/hiagokinlevi/ir-playbooks-automation.git\n   f6a049a..376762a  HEAD -> main\n",
+  "stdout": "",
+  "summary": "prevent orphan evidence dirs"
+}

@@ -8,7 +8,7 @@ This roadmap outlines planned improvements and features. Priorities may shift ba
 
 - [x] Azure VM network isolation via NSG automation
 - [x] S3 bucket public-access lockdown automation
-- [x] GCS bucket exposure containment
+- [ ] GCS bucket exposure containment
 
 ## v1.2 — Enhanced Evidence Collection
 
@@ -48,12 +48,11 @@ This roadmap outlines planned improvements and features. Priorities may shift ba
 - [x] AWS EC2 isolation automation
 - [x] Azure VM network isolation automation (`isolate_azure_vm.py`)
 - [x] GCP Compute Engine isolation automation (`isolate_gcp_instance.py`)
-- [x] GCS bucket exposure containment (`lockdown_gcs_bucket.py`)
 - [x] Azure session revocation script
 - [x] Evidence packaging with SHA-256 manifest
 - [x] Pydantic incident schemas
 - [x] Incident state machine
-- [x] Click CLI (open-incident, set-severity, start-playbook, create-timeline, generate-report, lockdown-s3-bucket, lockdown-gcs-bucket, isolate-azure-vm, isolate-gcp-instance)
+- [x] Click CLI (open-incident, set-severity, start-playbook, create-timeline, generate-report, lockdown-s3-bucket, isolate-azure-vm, isolate-gcp-instance)
 
 ---
 

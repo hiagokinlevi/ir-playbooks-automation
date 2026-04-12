@@ -12,8 +12,9 @@
 
 If you discover a security vulnerability in this project, please report it responsibly:
 
-1. **Email:** Send a detailed report to the maintainer via GitHub's private vulnerability reporting feature (Security tab → "Report a vulnerability").
-2. **Include in your report:**
+1. **Email:** Send a detailed report to **hiagokinlevi@protonmail.com**.
+2. **GitHub Advisory:** Optionally use GitHub's private vulnerability reporting feature (Security tab → "Report a vulnerability").
+3. **Include in your report:**
    - A clear description of the vulnerability
    - Steps to reproduce
    - Potential impact assessment

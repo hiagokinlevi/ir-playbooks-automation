@@ -1,0 +1,15 @@
+{
+  "automation_id": "cyber-detection-lane",
+  "created_at_utc": "2026-04-11T21:30:34Z",
+  "head_commit": "376762ab5a62dbdef189365063fc06de28ee4cc4",
+  "local_branch": "main",
+  "origin_url": "https://github.com/hiagokinlevi/ir-playbooks-automation.git",
+  "owner": "hiagokinlevi",
+  "publish_mode": "direct-main",
+  "publisher_root": "/Users/hiagokin/ir-playbooks-automation/publish-bridge",
+  "repo_name": "ir-playbooks-automation",
+  "repo_path": "/Users/hiagokin/ir-playbooks-automation",
+  "request_id": "20260411T183034-7b6d58f4433f",
+  "summary": "prevent orphan evidence dirs",
+  "target_ref": "main"
+}
