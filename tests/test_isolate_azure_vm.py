@@ -26,6 +26,7 @@ from automations.cloud.isolate_azure_vm import (
     AzureIsolationResult,
     _build_deny_all_nsg_rules,
     _incident_tags,
+    _isolation_nsg_name,
     _timestamp,
     isolate_azure_vm,
     restore_azure_vm,
@@ -109,6 +110,15 @@ class TestIncidentTags:
     def test_all_keys_have_k1n_prefix(self):
         for key in self.tags:
             assert key.startswith("k1n-ir-")
+
+
+class TestIsolationNsgName:
+    def test_replaces_non_alnum_segments_with_dashes(self):
+        assert _isolation_nsg_name("INC 2026 / PROD") == "nsg-ir-isolation-inc-2026-prod"
+
+    def test_rejects_ids_without_letters_or_numbers(self):
+        with pytest.raises(ValueError, match="at least one letter or number"):
+            _isolation_nsg_name(" / --- ")
 
 
 # ---------------------------------------------------------------------------
@@ -202,6 +212,33 @@ class TestIsolateAzureVmDryRun:
         # NSG name appears in actions — should be all lowercase
         nsg_segment = [t for t in result.actions_taken if "nsg-ir-isolation" in t][0]
         assert nsg_segment == nsg_segment.lower() or "nsg-ir-isolation-inc-2026-upper" in nsg_segment
+
+    def test_strips_safe_whitespace_from_identifiers(self):
+        result = self._run(
+            subscription_id=" 00000000-0000-0000-0000-000000000000 ",
+            resource_group=" rg-prod ",
+            vm_name="web-01 ",
+            incident_id=" INC-2026-042 ",
+            location=" westus2 ",
+        )
+        assert result.vm_name == "web-01"
+        assert result.resource_group == "rg-prod"
+        assert result.incident_id == "INC-2026-042"
+        assert any("westus2" in action for action in result.actions_taken)
+
+    @pytest.mark.parametrize(
+        ("kwargs", "message"),
+        [
+            ({"subscription_id": "sub/id"}, "Subscription ID"),
+            ({"resource_group": "rg/prod"}, "Resource group"),
+            ({"vm_name": "web/01"}, "VM name"),
+            ({"incident_id": "../INC-2026-042"}, "Incident ID"),
+            ({"location": "westus2\nprod"}, "Location"),
+        ],
+    )
+    def test_rejects_path_like_or_control_character_identifiers(self, kwargs, message):
+        with pytest.raises(ValueError, match=message):
+            self._run(**kwargs)
 
 
 # ---------------------------------------------------------------------------
@@ -316,6 +353,10 @@ class TestRestoreAzureVmDryRun:
 
     def test_errors_empty_on_success(self):
         assert self._run().errors == []
+
+    def test_rejects_invalid_nic_name_in_saved_state(self):
+        with pytest.raises(ValueError, match="NIC name"):
+            self._run(saved_state={"nic_name": "../nic-01", "original_nsg_id": None})
 
 
 # ---------------------------------------------------------------------------

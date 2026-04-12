@@ -67,3 +67,25 @@ def test_isolate_azure_vm_writes_json_output(tmp_path) -> None:
     assert payload["resource_group"] == "rg-prod"
     assert any("deallocate" in action.lower() for action in payload["actions_taken"])
     assert any("westus2" in action for action in payload["actions_taken"])
+
+
+def test_isolate_azure_vm_rejects_path_like_vm_name() -> None:
+    runner = CliRunner()
+
+    result = runner.invoke(
+        cli,
+        [
+            "isolate-azure-vm",
+            "--subscription-id",
+            "00000000-0000-0000-0000-000000000000",
+            "--resource-group",
+            "rg-prod",
+            "--vm-name",
+            "../web-01",
+            "--incident-id",
+            "INC-2026-061",
+        ],
+    )
+
+    assert result.exit_code != 0
+    assert "VM name must not contain path separators" in result.output

@@ -612,15 +612,18 @@ def isolate_azure_vm_cmd(
             abort=True,
         )
 
-    result = isolate_azure_vm(
-        subscription_id=subscription_id,
-        resource_group=resource_group,
-        vm_name=vm_name,
-        incident_id=incident_id,
-        location=location,
-        deallocate_vm=deallocate_vm,
-        dry_run=not execute,
-    )
+    try:
+        result = isolate_azure_vm(
+            subscription_id=subscription_id,
+            resource_group=resource_group,
+            vm_name=vm_name,
+            incident_id=incident_id,
+            location=location,
+            deallocate_vm=deallocate_vm,
+            dry_run=not execute,
+        )
+    except ValueError as exc:
+        raise click.ClickException(str(exc)) from exc
 
     table = Table(title="Azure VM Isolation")
     table.add_column("Field")

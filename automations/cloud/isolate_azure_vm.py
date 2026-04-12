@@ -46,6 +46,7 @@ Usage:
 from __future__ import annotations
 
 import logging
+import re
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Any, Optional
@@ -90,6 +91,36 @@ class AzureIsolationResult:
 
 def _timestamp() -> str:
     return datetime.now(tz=timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+def _normalize_required_identifier(
+    value: object,
+    *,
+    field_name: str,
+    allow_whitespace: bool = False,
+) -> str:
+    """Reject blank, control-character, or path-like identifiers."""
+    if not isinstance(value, str):
+        raise ValueError(f"{field_name} must be a string")
+
+    normalized = value.strip()
+    if not normalized:
+        raise ValueError(f"{field_name} must not be blank")
+    if any(ord(ch) < 32 or ord(ch) == 127 for ch in normalized):
+        raise ValueError(f"{field_name} must not contain control characters")
+    if "/" in normalized or "\\" in normalized:
+        raise ValueError(f"{field_name} must not contain path separators")
+    if not allow_whitespace and any(ch.isspace() for ch in normalized):
+        raise ValueError(f"{field_name} must not contain whitespace")
+    return normalized
+
+
+def _isolation_nsg_name(incident_id: str) -> str:
+    """Return an Azure-safe incident NSG name from a validated incident ID."""
+    slug = re.sub(r"[^a-z0-9-]+", "-", incident_id.lower()).strip("-")
+    if not slug:
+        raise ValueError("Incident ID must contain at least one letter or number")
+    return f"nsg-ir-isolation-{slug}"
 
 
 def _build_deny_all_nsg_rules() -> list[dict[str, Any]]:
@@ -180,6 +211,27 @@ def isolate_azure_vm(
     Returns:
         AzureIsolationResult with success status, actions taken, and saved state.
     """
+    subscription_id = _normalize_required_identifier(
+        subscription_id,
+        field_name="Subscription ID",
+    )
+    resource_group = _normalize_required_identifier(
+        resource_group,
+        field_name="Resource group",
+        allow_whitespace=True,
+    )
+    vm_name = _normalize_required_identifier(vm_name, field_name="VM name")
+    incident_id = _normalize_required_identifier(
+        incident_id,
+        field_name="Incident ID",
+        allow_whitespace=True,
+    )
+    location = _normalize_required_identifier(
+        location,
+        field_name="Location",
+        allow_whitespace=True,
+    )
+
     result = AzureIsolationResult(
         success=False,
         dry_run=dry_run,
@@ -188,7 +240,7 @@ def isolate_azure_vm(
         incident_id=incident_id,
     )
 
-    isolation_nsg_name = f"nsg-ir-isolation-{incident_id.lower().replace(' ', '-')}"
+    isolation_nsg_name = _isolation_nsg_name(incident_id)
 
     if dry_run:
         # Preview mode: describe what would happen without SDK calls
@@ -358,6 +410,24 @@ def restore_azure_vm(
     Returns:
         AzureIsolationResult describing the restoration actions.
     """
+    subscription_id = _normalize_required_identifier(
+        subscription_id,
+        field_name="Subscription ID",
+    )
+    resource_group = _normalize_required_identifier(
+        resource_group,
+        field_name="Resource group",
+        allow_whitespace=True,
+    )
+    vm_name = _normalize_required_identifier(vm_name, field_name="VM name")
+    incident_id = _normalize_required_identifier(
+        incident_id,
+        field_name="Incident ID",
+        allow_whitespace=True,
+    )
+    if not isinstance(saved_state, dict):
+        raise ValueError("saved_state must be a dict returned by isolate_azure_vm()")
+
     result = AzureIsolationResult(
         success=False,
         dry_run=dry_run,
@@ -366,7 +436,10 @@ def restore_azure_vm(
         incident_id=incident_id,
     )
 
-    nic_name        = saved_state.get("nic_name", "unknown")
+    nic_name = _normalize_required_identifier(
+        saved_state.get("nic_name"),
+        field_name="NIC name",
+    )
     original_nsg_id = saved_state.get("original_nsg_id")
 
     if dry_run:
