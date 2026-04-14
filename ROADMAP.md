@@ -52,8 +52,7 @@ This roadmap outlines planned improvements and features. Priorities may shift ba
 - [x] Evidence packaging with SHA-256 manifest
 - [x] Pydantic incident schemas
 - [x] Incident state machine
-- [x] Click CLI (open-incident, set-severity, start-playbook, create-timeline, generate-report, lockdown-s3-bucket, isolate-azure-vm, isolate-gcp-instance)
+- [x] Click CLI (open-incident, set-severity,
 
----
-
-Community suggestions are welcome — open a GitHub Discussion or issue.
+## Automated Completions
+- [x] Define standard playbook template (cycle 2)
