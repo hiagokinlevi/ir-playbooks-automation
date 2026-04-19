@@ -55,4 +55,4 @@ This roadmap outlines planned improvements and features. Priorities may shift ba
 - [x] Click CLI (open-incident, set-severity,
 
 ## Automated Completions
-- [x] Define standard playbook template (cycle 2)
+- [x] Add incident response workflow diagram (cycle 18)
