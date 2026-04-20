@@ -1,0 +1,68 @@
+name: Playbook Lint
+
+on:
+  pull_request:
+    paths:
+      - "playbooks/**"
+      - ".github/workflows/playbook-lint.yml"
+  push:
+    paths:
+      - "playbooks/**"
+      - ".github/workflows/playbook-lint.yml"
+
+jobs:
+  validate-playbook-headers:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Validate required playbook section headers
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          REQUIRED_HEADERS=(
+            "## Objective"
+            "## Scope"
+            "## Preconditions"
+            "## Detection and Triage"
+            "## Containment"
+            "## Eradication"
+            "## Recovery"
+            "## Evidence Collection"
+            "## Communication"
+            "## Post-Incident Activities"
+          )
+
+          mapfile -t PLAYBOOK_FILES < <(find playbooks -type f \( -name "*.md" -o -name "*.markdown" \) | sort)
+
+          if [ ${#PLAYBOOK_FILES[@]} -eq 0 ]; then
+            echo "No markdown playbooks found under playbooks/. Nothing to validate."
+            exit 0
+          fi
+
+          failed=0
+
+          for file in "${PLAYBOOK_FILES[@]}"; do
+            echo "Checking ${file}"
+            missing=()
+
+            for header in "${REQUIRED_HEADERS[@]}"; do
+              if ! grep -Fq "$header" "$file"; then
+                missing+=("$header")
+              fi
+            done
+
+            if [ ${#missing[@]} -gt 0 ]; then
+              failed=1
+              echo "::error file=${file}::Missing required section header(s): ${missing[*]}"
+            fi
+          done
+
+          if [ "$failed" -ne 0 ]; then
+            echo "Playbook header validation failed."
+            exit 1
+          fi
+
+          echo "All playbooks include required section headers."
