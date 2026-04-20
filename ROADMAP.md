@@ -55,4 +55,4 @@ This roadmap outlines planned improvements and features. Priorities may shift ba
 - [x] Click CLI (open-incident, set-severity,
 
 ## Automated Completions
-- [x] Add incident communication template (cycle 21)
+- [x] Add triage checklist for analysts (cycle 22)
