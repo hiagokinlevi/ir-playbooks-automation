@@ -55,4 +55,4 @@ This roadmap outlines planned improvements and features. Priorities may shift ba
 - [x] Click CLI (open-incident, set-severity,
 
 ## Automated Completions
-- [x] Create playbook validation GitHub Action (cycle 20)
+- [x] Add incident communication template (cycle 21)
