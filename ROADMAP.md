@@ -55,4 +55,4 @@ This roadmap outlines planned improvements and features. Priorities may shift ba
 - [x] Click CLI (open-incident, set-severity,
 
 ## Automated Completions
-- [x] Create repository structure for playbooks and docs (cycle 23)
+- [x] Add evidence manifest verification CLI command (cycle 24)
