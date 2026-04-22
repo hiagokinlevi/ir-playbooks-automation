@@ -55,4 +55,4 @@ This roadmap outlines planned improvements and features. Priorities may shift ba
 - [x] Click CLI (open-incident, set-severity,
 
 ## Automated Completions
-- [x] Add CLI command to validate incident record files against Pydantic schemas (cycle 25)
+- [x] Add CLI dry-run flag for containment automations (cycle 26)
