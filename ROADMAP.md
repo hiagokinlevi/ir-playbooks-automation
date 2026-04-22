@@ -55,4 +55,4 @@ This roadmap outlines planned improvements and features. Priorities may shift ba
 - [x] Click CLI (open-incident, set-severity,
 
 ## Automated Completions
-- [x] Add CLI dry-run flag for containment automations (cycle 26)
+- [x] Introduce playbook front-matter schema lint command (cycle 27)
