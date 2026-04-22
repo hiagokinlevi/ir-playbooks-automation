@@ -55,4 +55,4 @@ This roadmap outlines planned improvements and features. Priorities may shift ba
 - [x] Click CLI (open-incident, set-severity,
 
 ## Automated Completions
-- [x] Introduce playbook front-matter schema lint command (cycle 27)
+- [x] Create deterministic evidence manifest sort and timestamp normalization (cycle 28)
