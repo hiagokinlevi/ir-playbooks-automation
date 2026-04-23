@@ -1,0 +1,24 @@
+{
+  "issueKey": "{{ incident.external_refs.jira.issue_key }}",
+  "fields": {
+    "summary": "[IR-{{ incident.id }}] {{ incident.title }}",
+    "description": "Incident update from ir-playbooks-automation\n\nIncident ID: {{ incident.id }}\nTitle: {{ incident.title }}\nStatus: {{ incident.status }}\nSeverity: {{ incident.severity }}\nOwner: {{ incident.owner }}\nDetected At: {{ incident.detected_at }}\nUpdated At: {{ incident.updated_at }}\n\nAffected Assets:\n{{ incident.affected_assets | join(', ') }}\n\nIOCs:\n{{ incident.iocs | join(', ') }}\n\nLatest Timeline Entry:\n{{ incident.latest_timeline_entry }}\n\nNext Actions:\n{{ incident.next_actions }}",
+    "labels": [
+      "incident-response",
+      "{{ incident.severity }}",
+      "{{ incident.status }}"
+    ],
+    "customfield_incident_id": "{{ incident.id }}",
+    "customfield_detection_source": "{{ incident.detection_source }}",
+    "customfield_containment_status": "{{ incident.containment_status }}"
+  },
+  "update": {
+    "comment": [
+      {
+        "add": {
+          "body": "Automated incident update: status={{ incident.status }}, severity={{ incident.severity }}, updated_at={{ incident.updated_at }}"
+        }
+      }
+    ]
+  }
+}
