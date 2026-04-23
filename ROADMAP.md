@@ -55,4 +55,4 @@ This roadmap outlines planned improvements and features. Priorities may shift ba
 - [x] Click CLI (open-incident, set-severity,
 
 ## Automated Completions
-- [x] Add severity escalation audit log output (cycle 29)
+- [x] Ship minimal Jira webhook payload template for incident updates (cycle 30)
