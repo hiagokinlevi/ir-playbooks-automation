@@ -55,4 +55,4 @@ This roadmap outlines planned improvements and features. Priorities may shift ba
 - [x] Click CLI (open-incident, set-severity,
 
 ## Automated Completions
-- [x] Add CLI command to validate playbook YAML against front-matter schema (cycle 31)
+- [x] Add `ir validate-schema` CLI command alias with deprecation-safe help text (cycle 32)
