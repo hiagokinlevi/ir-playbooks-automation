@@ -19,7 +19,7 @@ This roadmap outlines planned improvements and features. Priorities may shift ba
 
 ## v1.3 — Reporting and Metrics
 
-- [x] HTML report generation (Jinja2 templates)
+- [ ] HTML report generation (Jinja2 templates)
 - [ ] PDF export for executive briefs
 - [ ] MTTR / MTTD metrics dashboard (Markdown + CSV output)
 - [ ] STIX/TAXII output for threat intel sharing
@@ -53,3 +53,6 @@ This roadmap outlines planned improvements and features. Priorities may shift ba
 - [x] Pydantic incident schemas
 - [x] Incident state machine
 - [x] Click CLI (open-incident, set-severity,
+
+## Automated Completions
+- [x] Add `ir report-html` CLI command for single-incident HTML rendering (cycle 34)
