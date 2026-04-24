@@ -55,4 +55,4 @@ This roadmap outlines planned improvements and features. Priorities may shift ba
 - [x] Click CLI (open-incident, set-severity,
 
 ## Automated Completions
-- [x] Add `ir validate-schema` CLI command alias with deprecation-safe help text (cycle 32)
+- [x] Add `ir workflow-next` CLI command to show allowed incident state transitions (cycle 33)
