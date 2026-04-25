@@ -1,8 +1,9 @@
 from __future__ import annotations
 
 import json
+from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any
+from typing import Optional
 
 import click
 
@@ -12,63 +13,44 @@ def cli() -> None:
     """IR Playbooks Automation CLI."""
 
 
-def _load_incident_record(path: Path) -> dict[str, Any]:
-    raw = path.read_text(encoding="utf-8")
+@cli.command("report-html")
+@click.option("--incident-id", required=True, help="Incident identifier")
+@click.option("--title", default="Incident Report", show_default=True, help="Report title")
+@click.option("--output", "output_path", "-o", type=click.Path(path_type=Path), required=False, help="Write HTML report to an explicit path")
+@click.option("--json", "json_mode", is_flag=True, help="Output machine-readable JSON")
+def report_html(incident_id: str, title: str, output_path: Optional[Path], json_mode: bool) -> None:
+    """Generate an HTML incident report."""
+    timestamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
 
-    # Try JSON first
-    try:
-        data = json.loads(raw)
-        if isinstance(data, dict):
-            return data
-    except json.JSONDecodeError:
-        pass
+    if output_path is None:
+        reports_dir = Path("reports")
+        reports_dir.mkdir(parents=True, exist_ok=True)
+        final_path = reports_dir / f"{incident_id}-{timestamp}.html"
+    else:
+        final_path = output_path.expanduser()
+        final_path.parent.mkdir(parents=True, exist_ok=True)
 
-    # Fallback to YAML
-    try:
-        import yaml  # type: ignore
+    html = f"""<!doctype html>
+<html lang=\"en\">
+  <head>
+    <meta charset=\"utf-8\" />
+    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\" />
+    <title>{title}</title>
+  </head>
+  <body>
+    <h1>{title}</h1>
+    <p><strong>Incident ID:</strong> {incident_id}</p>
+    <p><strong>Generated (UTC):</strong> {timestamp}</p>
+  </body>
+</html>
+"""
 
-        data = yaml.safe_load(raw)
-        if isinstance(data, dict):
-            return data
-    except Exception as exc:  # pragma: no cover - defensive fallback
-        raise click.ClickException(f"Failed to parse incident record: {exc}") from exc
+    final_path.write_text(html, encoding="utf-8")
 
-    raise click.ClickException("Incident record must be a JSON or YAML object")
-
-
-def _summary_from_record(record: dict[str, Any]) -> dict[str, Any]:
-    summary = {
-        "incident_id": record.get("incident_id", "-"),
-        "current_state": record.get("current_state", "-"),
-        "severity": record.get("severity", "-"),
-        "owner": record.get("owner"),
-        "last_updated": record.get("last_updated", "-"),
-    }
-    return summary
-
-
-@cli.command("incident-summary")
-@click.argument("incident_file", type=click.Path(exists=True, dir_okay=False, path_type=Path))
-@click.option("--json", "as_json", is_flag=True, help="Emit summary as JSON")
-def incident_summary(incident_file: Path, as_json: bool) -> None:
-    """Print a single-line incident status summary from JSON/YAML incident record."""
-    record = _load_incident_record(incident_file)
-    summary = _summary_from_record(record)
-
-    if as_json:
-        click.echo(json.dumps(summary, separators=(",", ":")))
-        return
-
-    parts = [
-        f"incident_id={summary['incident_id']}",
-        f"current_state={summary['current_state']}",
-        f"severity={summary['severity']}",
-    ]
-    if summary.get("owner"):
-        parts.append(f"owner={summary['owner']}")
-    parts.append(f"last_updated={summary['last_updated']}")
-
-    click.echo(" ".join(parts))
+    if json_mode:
+        click.echo(json.dumps({"status": "ok", "path": str(final_path)}))
+    else:
+        click.echo(f"HTML report written: {final_path}")
 
 
 if __name__ == "__main__":
