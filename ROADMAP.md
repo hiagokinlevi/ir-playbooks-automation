@@ -55,4 +55,4 @@ This roadmap outlines planned improvements and features. Priorities may shift ba
 - [x] Click CLI (open-incident, set-severity,
 
 ## Automated Completions
-- [x] Add `ir incident-summary` CLI command for one-line incident status output (cycle 35)
+- [x] Add `--json` output flag to `ir workflow-next` for automation pipelines (cycle 36)
