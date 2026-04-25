@@ -55,4 +55,4 @@ This roadmap outlines planned improvements and features. Priorities may shift ba
 - [x] Click CLI (open-incident, set-severity,
 
 ## Automated Completions
-- [x] Add `ir report-html` CLI command for single-incident HTML rendering (cycle 34)
+- [x] Add `ir incident-summary` CLI command for one-line incident status output (cycle 35)
