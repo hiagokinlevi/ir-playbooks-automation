@@ -1,6 +1,3 @@
-#!/usr/bin/env python3
-"""IR Playbooks Automation CLI."""
-
 from __future__ import annotations
 
 import json
@@ -9,122 +6,69 @@ from typing import Any
 
 import click
 
-try:
-    import yaml  # type: ignore
-except Exception:  # pragma: no cover
-    yaml = None
 
-try:
-    from jinja2 import Environment, FileSystemLoader, select_autoescape
-except Exception as exc:  # pragma: no cover
-    raise RuntimeError("Jinja2 is required for report rendering") from exc
-
-
-@click.group(help="IR Playbooks Automation CLI")
+@click.group()
 def cli() -> None:
-    pass
+    """IR Playbooks Automation CLI."""
 
 
-@cli.command("report-html")
-@click.argument("incident_file", type=click.Path(exists=True, dir_okay=False, path_type=Path))
-@click.option(
-    "--out",
-    "out_path",
-    type=click.Path(dir_okay=False, writable=True, path_type=Path),
-    required=True,
-    help="Deterministic output HTML file path.",
-)
-def report_html(incident_file: Path, out_path: Path) -> None:
-    """Render a single-incident HTML report from JSON/YAML input."""
+def _load_incident_record(path: Path) -> dict[str, Any]:
+    raw = path.read_text(encoding="utf-8")
 
-    def _load_input(path: Path) -> dict[str, Any]:
-        raw = path.read_text(encoding="utf-8")
-        suffix = path.suffix.lower()
-
-        try:
-            if suffix in {".yaml", ".yml"}:
-                if yaml is None:
-                    raise click.ClickException("PyYAML is required to read YAML incident files")
-                parsed = yaml.safe_load(raw)
-            else:
-                parsed = json.loads(raw)
-        except click.ClickException:
-            raise
-        except Exception as e:
-            raise click.ClickException(f"Failed parsing incident input: {e}") from e
-
-        if not isinstance(parsed, dict):
-            raise click.ClickException("Incident input must be a JSON/YAML object")
-
-        required_any = ["incident_id", "id"]
-        if not any(k in parsed and parsed.get(k) for k in required_any):
-            raise click.ClickException("Incident input missing required identifier field: incident_id or id")
-
-        return parsed
-
-    def _safe_defaults(incident: dict[str, Any]) -> dict[str, Any]:
-        incident_id = incident.get("incident_id") or incident.get("id") or "unknown-incident"
-        title = incident.get("title") or incident.get("name") or "Untitled Incident"
-        severity = incident.get("severity") or "unknown"
-        status = incident.get("status") or "unknown"
-        summary = incident.get("summary") or incident.get("description") or ""
-        indicators = incident.get("indicators")
-        if not isinstance(indicators, list):
-            indicators = []
-        timeline = incident.get("timeline")
-        if not isinstance(timeline, list):
-            timeline = []
-        return {
-            "incident": incident,
-            "incident_id": incident_id,
-            "title": title,
-            "severity": severity,
-            "status": status,
-            "summary": summary,
-            "indicators": indicators,
-            "timeline": timeline,
-        }
-
-    incident = _load_input(incident_file)
-    context = _safe_defaults(incident)
-
-    templates_dir = Path(__file__).resolve().parent / "templates"
-    env = Environment(
-        loader=FileSystemLoader(str(templates_dir)),
-        autoescape=select_autoescape(["html", "xml"]),
-    )
-
-    candidate_templates = [
-        "reports/incident_report.html.j2",
-        "reports/incident-report.html.j2",
-        "reports/incident_report.j2",
-        "reports/incident-report.j2",
-        "reports/incident_report.html",
-        "reports/incident-report.html",
-    ]
-
-    template = None
-    for tpl_name in candidate_templates:
-        try:
-            template = env.get_template(tpl_name)
-            break
-        except Exception:
-            continue
-
-    if template is None:
-        raise click.ClickException(
-            "No report template found under templates/reports/. "
-            "Expected one of: " + ", ".join(candidate_templates)
-        )
-
+    # Try JSON first
     try:
-        rendered = template.render(**context)
-    except Exception as e:
-        raise click.ClickException(f"Failed rendering HTML report: {e}") from e
+        data = json.loads(raw)
+        if isinstance(data, dict):
+            return data
+    except json.JSONDecodeError:
+        pass
 
-    out_path.parent.mkdir(parents=True, exist_ok=True)
-    out_path.write_text(rendered, encoding="utf-8")
-    click.echo(str(out_path))
+    # Fallback to YAML
+    try:
+        import yaml  # type: ignore
+
+        data = yaml.safe_load(raw)
+        if isinstance(data, dict):
+            return data
+    except Exception as exc:  # pragma: no cover - defensive fallback
+        raise click.ClickException(f"Failed to parse incident record: {exc}") from exc
+
+    raise click.ClickException("Incident record must be a JSON or YAML object")
+
+
+def _summary_from_record(record: dict[str, Any]) -> dict[str, Any]:
+    summary = {
+        "incident_id": record.get("incident_id", "-"),
+        "current_state": record.get("current_state", "-"),
+        "severity": record.get("severity", "-"),
+        "owner": record.get("owner"),
+        "last_updated": record.get("last_updated", "-"),
+    }
+    return summary
+
+
+@cli.command("incident-summary")
+@click.argument("incident_file", type=click.Path(exists=True, dir_okay=False, path_type=Path))
+@click.option("--json", "as_json", is_flag=True, help="Emit summary as JSON")
+def incident_summary(incident_file: Path, as_json: bool) -> None:
+    """Print a single-line incident status summary from JSON/YAML incident record."""
+    record = _load_incident_record(incident_file)
+    summary = _summary_from_record(record)
+
+    if as_json:
+        click.echo(json.dumps(summary, separators=(",", ":")))
+        return
+
+    parts = [
+        f"incident_id={summary['incident_id']}",
+        f"current_state={summary['current_state']}",
+        f"severity={summary['severity']}",
+    ]
+    if summary.get("owner"):
+        parts.append(f"owner={summary['owner']}")
+    parts.append(f"last_updated={summary['last_updated']}")
+
+    click.echo(" ".join(parts))
 
 
 if __name__ == "__main__":
