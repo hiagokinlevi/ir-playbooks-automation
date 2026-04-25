@@ -55,4 +55,4 @@ This roadmap outlines planned improvements and features. Priorities may shift ba
 - [x] Click CLI (open-incident, set-severity,
 
 ## Automated Completions
-- [x] Add `--json` output flag to `ir workflow-next` for automation pipelines (cycle 36)
+- [x] Add `ir report-html --open` flag to launch generated report in default browser (cycle 37)
