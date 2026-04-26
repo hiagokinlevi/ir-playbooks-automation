@@ -5,7 +5,7 @@ import webbrowser
 from pathlib import Path
 
 import click
-from jinja2 import Environment, FileSystemLoader, select_autoescape
+from jinja2 import Environment, FileSystemLoader, StrictUndefined
 
 
 @click.group()
@@ -13,32 +13,43 @@ def cli() -> None:
     """IR Playbooks Automation CLI."""
 
 
-@cli.group("ir")
-def ir_group() -> None:
-    """Incident response commands."""
+@cli.command("report-html")
+@click.argument("incident_file", type=click.Path(exists=True, dir_okay=False, path_type=Path))
+@click.option(
+    "--output",
+    "output_file",
+    type=click.Path(dir_okay=False, path_type=Path),
+    default=Path("incident-report.html"),
+    show_default=True,
+    help="Write rendered HTML report to this file path.",
+)
+@click.option("--open", "open_in_browser", is_flag=True, help="Open generated report in the default browser.")
+@click.option(
+    "--stdout",
+    "to_stdout",
+    is_flag=True,
+    help="Emit rendered HTML to standard output instead of writing a file.",
+)
+def report_html(incident_file: Path, output_file: Path, open_in_browser: bool, to_stdout: bool) -> None:
+    """Render an incident JSON file as an HTML report."""
+    try:
+        incident = json.loads(incident_file.read_text(encoding="utf-8"))
+        env = Environment(
+            loader=FileSystemLoader("templates/reports"),
+            autoescape=True,
+            undefined=StrictUndefined,
+        )
+        template = env.get_template("incident_report.html.j2")
+        rendered = template.render(incident=incident)
+    except Exception as exc:  # production CLI error surface
+        raise click.ClickException(f"Failed to render HTML report: {exc}") from exc
 
+    if to_stdout:
+        click.echo(rendered)
+        return
 
-@ir_group.command("report-html")
-@click.option("--incident", "incident_path", required=True, type=click.Path(exists=True, dir_okay=False, path_type=Path), help="Path to incident JSON file.")
-@click.option("--output", "output_path", required=True, type=click.Path(dir_okay=False, path_type=Path), help="Path to write generated HTML report.")
-@click.option("--open", "open_in_browser", is_flag=True, help="Open generated report in the default browser after creation.")
-def report_html(incident_path: Path, output_path: Path, open_in_browser: bool) -> None:
-    """Generate HTML incident report from incident JSON."""
-    with incident_path.open("r", encoding="utf-8") as f:
-        incident = json.load(f)
-
-    templates_dir = Path(__file__).resolve().parents[1] / "templates" / "reports"
-    env = Environment(
-        loader=FileSystemLoader(str(templates_dir)),
-        autoescape=select_autoescape(["html", "xml"]),
-    )
-    template = env.get_template("incident_report.html.j2")
-    rendered = template.render(incident=incident)
-
-    output_path.parent.mkdir(parents=True, exist_ok=True)
-    output_path.write_text(rendered, encoding="utf-8")
-
-    click.echo(f"Generated HTML report: {output_path}")
+    output_file.write_text(rendered, encoding="utf-8")
+    click.echo(f"HTML report written: {output_file}")
 
     if open_in_browser:
-        webbrowser.open(output_path.resolve().as_uri())
+        webbrowser.open(output_file.resolve().as_uri())
