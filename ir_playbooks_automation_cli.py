@@ -1,56 +1,59 @@
-from __future__ import annotations
-
 import json
-from datetime import datetime, timezone
+from datetime import datetime
 from pathlib import Path
-from typing import Optional
 
 import click
 
+INCIDENT_DB = Path(".incidents.json")
+
+
+def _load_incidents() -> dict:
+    if not INCIDENT_DB.exists():
+        return {}
+    return json.loads(INCIDENT_DB.read_text(encoding="utf-8"))
+
 
 @click.group()
-def cli() -> None:
+def cli():
     """IR Playbooks Automation CLI."""
 
 
-@cli.command("report-html")
-@click.option("--incident-id", required=True, help="Incident identifier")
-@click.option("--title", default="Incident Report", show_default=True, help="Report title")
-@click.option("--output", "output_path", "-o", type=click.Path(path_type=Path), required=False, help="Write HTML report to an explicit path")
-@click.option("--json", "json_mode", is_flag=True, help="Output machine-readable JSON")
-def report_html(incident_id: str, title: str, output_path: Optional[Path], json_mode: bool) -> None:
-    """Generate an HTML incident report."""
-    timestamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+@cli.command("incident-summary")
+@click.argument("incident_id")
+@click.option(
+    "--json",
+    "as_json",
+    is_flag=True,
+    help=(
+        "Emit machine-readable JSON with keys: incident_id, current_state, severity, opened_at, updated_at. "
+        "Example: ir incident-summary IR-2026-001 --json | jq -r '.severity'"
+    ),
+)
+def incident_summary(incident_id: str, as_json: bool) -> None:
+    """Show summary for an incident by ID."""
+    incidents = _load_incidents()
+    incident = incidents.get(incident_id)
 
-    if output_path is None:
-        reports_dir = Path("reports")
-        reports_dir.mkdir(parents=True, exist_ok=True)
-        final_path = reports_dir / f"{incident_id}-{timestamp}.html"
-    else:
-        final_path = output_path.expanduser()
-        final_path.parent.mkdir(parents=True, exist_ok=True)
+    if not incident:
+        raise click.ClickException(f"Incident not found: {incident_id}")
 
-    html = f"""<!doctype html>
-<html lang=\"en\">
-  <head>
-    <meta charset=\"utf-8\" />
-    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\" />
-    <title>{title}</title>
-  </head>
-  <body>
-    <h1>{title}</h1>
-    <p><strong>Incident ID:</strong> {incident_id}</p>
-    <p><strong>Generated (UTC):</strong> {timestamp}</p>
-  </body>
-</html>
-"""
+    summary = {
+        "incident_id": incident_id,
+        "current_state": incident.get("current_state", "unknown"),
+        "severity": incident.get("severity", "unknown"),
+        "opened_at": incident.get("opened_at"),
+        "updated_at": incident.get("updated_at") or datetime.utcnow().isoformat() + "Z",
+    }
 
-    final_path.write_text(html, encoding="utf-8")
+    if as_json:
+        click.echo(json.dumps(summary))
+        return
 
-    if json_mode:
-        click.echo(json.dumps({"status": "ok", "path": str(final_path)}))
-    else:
-        click.echo(f"HTML report written: {final_path}")
+    click.echo(f"Incident ID: {summary['incident_id']}")
+    click.echo(f"Current State: {summary['current_state']}")
+    click.echo(f"Severity: {summary['severity']}")
+    click.echo(f"Opened At: {summary['opened_at']}")
+    click.echo(f"Updated At: {summary['updated_at']}")
 
 
 if __name__ == "__main__":
