@@ -55,4 +55,4 @@ This roadmap outlines planned improvements and features. Priorities may shift ba
 - [x] Click CLI (open-incident, set-severity,
 
 ## Automated Completions
-- [x] Add `ir workflow-next --from` flag for stateless transition checks (cycle 42)
+- [x] Add `ir workflow-next --to` flag to validate target transition (cycle 43)
