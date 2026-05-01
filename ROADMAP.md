@@ -55,4 +55,4 @@ This roadmap outlines planned improvements and features. Priorities may shift ba
 - [x] Click CLI (open-incident, set-severity,
 
 ## Automated Completions
-- [x] Add `ir incident-summary --format` for custom one-line templates (cycle 41)
+- [x] Add `ir workflow-next --from` flag for stateless transition checks (cycle 42)
