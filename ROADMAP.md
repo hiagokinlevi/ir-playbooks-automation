@@ -55,4 +55,4 @@ This roadmap outlines planned improvements and features. Priorities may shift ba
 - [x] Click CLI (open-incident, set-severity,
 
 ## Automated Completions
-- [x] Add `ir incident-summary --json` machine-readable output (cycle 40)
+- [x] Add `ir incident-summary --format` for custom one-line templates (cycle 41)
