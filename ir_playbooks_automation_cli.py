@@ -1,17 +1,9 @@
-#!/usr/bin/env python3
-"""CLI for incident response playbooks automation."""
-
-from __future__ import annotations
-
 import json
-import re
 from pathlib import Path
-from typing import Any
 
 import click
 
-
-INCIDENTS_DIR = Path("incidents")
+from workflows.state_machine import IncidentStateMachine, WorkflowState
 
 
 @click.group()
@@ -19,58 +11,50 @@ def cli() -> None:
     """IR Playbooks Automation CLI."""
 
 
-@cli.command("incident-summary")
-@click.argument("incident_file", type=click.Path(exists=True, path_type=Path))
-@click.option(
-    "--format",
-    "format_template",
-    default=None,
-    help=(
-        "Custom one-line template using incident placeholders. "
-        "Allowed: {id} {title} {severity} {state} {owner} {created_at} {updated_at}.\n"
-        "Examples:\n"
-        "  ir incident-summary incidents/IR-2026-0042.json --format '{id} {severity} {state} {owner}'\n"
-        "  ir incident-summary incidents/IR-2026-0042.json --format '[{severity}] {id} - {title}'\n"
-        "  ir incident-summary incidents/IR-2026-0042.json --format '{id}:{state}'"
-    ),
-)
-def incident_summary(incident_file: Path, format_template: str | None) -> None:
-    """Print a concise incident summary."""
-    with incident_file.open("r", encoding="utf-8") as fh:
-        incident: dict[str, Any] = json.load(fh)
+@cli.command("workflow-next")
+@click.option("--incident", "incident_path", type=click.Path(exists=True, dir_okay=False, path_type=Path), required=False, help="Path to incident record JSON file.")
+@click.option("--from", "from_state", required=False, help="Return allowed next states from the provided workflow state without loading an incident.")
+@click.option("--json", "as_json", is_flag=True, help="Output in JSON format.")
+def workflow_next(incident_path: Path | None, from_state: str | None, as_json: bool) -> None:
+    """Show allowed next workflow states.
 
-    if format_template:
-        placeholder_map: dict[str, Any] = {
-            "id": incident.get("id", ""),
-            "title": incident.get("title", ""),
-            "severity": incident.get("severity", ""),
-            "state": incident.get("state", ""),
-            "owner": incident.get("owner", ""),
-            "created_at": incident.get("created_at", ""),
-            "updated_at": incident.get("updated_at", ""),
-        }
+    Default behavior (no --from) looks up current state from an incident record.
+    """
+    sm = IncidentStateMachine()
 
-        keys = set(re.findall(r"\{([a-zA-Z_][a-zA-Z0-9_]*)\}", format_template))
-        unknown = sorted(k for k in keys if k not in placeholder_map)
-        if unknown:
-            allowed = " ".join(f"{{{k}}}" for k in placeholder_map)
-            unknown_joined = ", ".join(unknown)
+    if from_state:
+        try:
+            current_state = WorkflowState(from_state)
+        except ValueError:
+            valid = [s.value for s in WorkflowState]
             raise click.ClickException(
-                f"Unknown placeholder(s): {unknown_joined}. Allowed placeholders: {allowed}"
+                f"Invalid state '{from_state}'. Valid states: {', '.join(valid)}"
+            )
+    else:
+        if incident_path is None:
+            raise click.ClickException("Provide --incident <path> or --from <state>.")
+        data = json.loads(incident_path.read_text(encoding="utf-8"))
+        state_value = data.get("state")
+        if not state_value:
+            raise click.ClickException("Incident record missing 'state'.")
+        try:
+            current_state = WorkflowState(state_value)
+        except ValueError:
+            valid = [s.value for s in WorkflowState]
+            raise click.ClickException(
+                f"Incident has invalid state '{state_value}'. Valid states: {', '.join(valid)}"
             )
 
-        rendered = format_template
-        for key, value in placeholder_map.items():
-            rendered = rendered.replace(f"{{{key}}}", str(value))
-        click.echo(rendered)
-        return
+    next_states = [s.value for s in sm.allowed_next_states(current_state)]
 
-    click.echo(
-        f"{incident.get('id', 'N/A')} "
-        f"severity={incident.get('severity', 'unknown')} "
-        f"state={incident.get('state', 'unknown')} "
-        f"owner={incident.get('owner', 'unassigned')}"
-    )
+    if as_json:
+        click.echo(json.dumps({"from": current_state.value, "next": next_states}))
+    else:
+        click.echo(f"from: {current_state.value}")
+        if next_states:
+            click.echo("next: " + ", ".join(next_states))
+        else:
+            click.echo("next: <none>")
 
 
 if __name__ == "__main__":
