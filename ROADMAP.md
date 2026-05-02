@@ -55,4 +55,4 @@ This roadmap outlines planned improvements and features. Priorities may shift ba
 - [x] Click CLI (open-incident, set-severity,
 
 ## Automated Completions
-- [x] Add `ir report-html --template` flag for custom Jinja template selection (cycle 45)
+- [x] Add `ir incident-summary --file` flag to read incident record from explicit path (cycle 46)
