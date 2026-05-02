@@ -1,60 +1,83 @@
+#!/usr/bin/env python3
+"""
+IR Playbooks Automation CLI
+"""
+
+from __future__ import annotations
+
 import json
 from pathlib import Path
+from typing import Any, Dict
 
 import click
+from jinja2 import Environment, FileSystemLoader, select_autoescape
 
-from workflows.state_machine import IncidentStateMachine, WorkflowState
+
+DEFAULT_HTML_TEMPLATE = Path("templates/reports/incident_report.html.j2")
 
 
 @click.group()
 def cli() -> None:
-    """IR Playbooks Automation CLI."""
+    """Incident response playbooks automation CLI."""
 
 
-@cli.command("workflow-next")
-@click.option("--incident", "incident_path", type=click.Path(exists=True, dir_okay=False, path_type=Path), required=False, help="Path to incident record JSON file.")
-@click.option("--from", "from_state", required=False, help="Return allowed next states from the provided workflow state without loading an incident.")
-@click.option("--json", "as_json", is_flag=True, help="Output in JSON format.")
-def workflow_next(incident_path: Path | None, from_state: str | None, as_json: bool) -> None:
-    """Show allowed next workflow states.
+@cli.command("report-html")
+@click.option("--incident", "incident_path", required=True, type=click.Path(exists=True, dir_okay=False, path_type=Path), help="Path to incident JSON file")
+@click.option("--out", "out_path", required=True, type=click.Path(dir_okay=False, path_type=Path), help="Output HTML report path")
+@click.option(
+    "--template",
+    "template_path",
+    required=False,
+    type=click.Path(exists=True, dir_okay=False, path_type=Path),
+    help="Optional path to a custom Jinja2 HTML template",
+)
+def report_html(incident_path: Path, out_path: Path, template_path: Path | None) -> None:
+    """Generate an HTML incident report from incident JSON."""
 
-    Default behavior (no --from) looks up current state from an incident record.
-    """
-    sm = IncidentStateMachine()
-
-    if from_state:
-        try:
-            current_state = WorkflowState(from_state)
-        except ValueError:
-            valid = [s.value for s in WorkflowState]
-            raise click.ClickException(
-                f"Invalid state '{from_state}'. Valid states: {', '.join(valid)}"
-            )
+    if template_path is not None:
+        if not template_path.exists():
+            raise click.ClickException(f"Template file not found: {template_path}")
+        if not template_path.is_file():
+            raise click.ClickException(f"Template path is not a file: {template_path}")
+        selected_template = template_path
     else:
-        if incident_path is None:
-            raise click.ClickException("Provide --incident <path> or --from <state>.")
-        data = json.loads(incident_path.read_text(encoding="utf-8"))
-        state_value = data.get("state")
-        if not state_value:
-            raise click.ClickException("Incident record missing 'state'.")
-        try:
-            current_state = WorkflowState(state_value)
-        except ValueError:
-            valid = [s.value for s in WorkflowState]
-            raise click.ClickException(
-                f"Incident has invalid state '{state_value}'. Valid states: {', '.join(valid)}"
-            )
+        selected_template = DEFAULT_HTML_TEMPLATE
 
-    next_states = [s.value for s in sm.allowed_next_states(current_state)]
+    if not selected_template.exists():
+        raise click.ClickException(
+            f"Default template not found: {selected_template}. "
+            "Provide a template with --template."
+        )
 
-    if as_json:
-        click.echo(json.dumps({"from": current_state.value, "next": next_states}))
-    else:
-        click.echo(f"from: {current_state.value}")
-        if next_states:
-            click.echo("next: " + ", ".join(next_states))
-        else:
-            click.echo("next: <none>")
+    try:
+        incident_data = _load_incident_json(incident_path)
+        html = _render_html_report(incident_data, selected_template)
+        out_path.parent.mkdir(parents=True, exist_ok=True)
+        out_path.write_text(html, encoding="utf-8")
+    except click.ClickException:
+        raise
+    except Exception as exc:
+        raise click.ClickException(f"Failed generating HTML report: {exc}") from exc
+
+    click.echo(f"HTML report generated: {out_path}")
+
+
+def _load_incident_json(path: Path) -> Dict[str, Any]:
+    try:
+        return json.loads(path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as exc:
+        raise click.ClickException(f"Invalid incident JSON at {path}: {exc}") from exc
+
+
+def _render_html_report(incident: Dict[str, Any], template_path: Path) -> str:
+    env = Environment(
+        loader=FileSystemLoader(str(template_path.parent)),
+        autoescape=select_autoescape(["html", "xml"]),
+        trim_blocks=True,
+        lstrip_blocks=True,
+    )
+    template = env.get_template(template_path.name)
+    return template.render(incident=incident)
 
 
 if __name__ == "__main__":
