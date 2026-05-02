@@ -55,4 +55,4 @@ This roadmap outlines planned improvements and features. Priorities may shift ba
 - [x] Click CLI (open-incident, set-severity,
 
 ## Automated Completions
-- [x] Add `ir workflow-next --incident` flag to load current state from incident record (cycle 44)
+- [x] Add `ir report-html --template` flag for custom Jinja template selection (cycle 45)
