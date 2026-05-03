@@ -55,4 +55,4 @@ This roadmap outlines planned improvements and features. Priorities may shift ba
 - [x] Click CLI (open-incident, set-severity,
 
 ## Automated Completions
-- [x] Add `ir validate-incident --file` command for schema preflight checks (cycle 47)
+- [x] Add `ir workflow-next --reason` human-readable transition explanation (cycle 48)
