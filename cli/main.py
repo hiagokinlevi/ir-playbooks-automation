@@ -2,114 +2,53 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import Any
 
 import click
-import yaml
-
-
-# NOTE: Existing imports/functions omitted for brevity in this task-focused patch context.
-# This file content includes the workflow-next command implementation update.
-
-
-def _load_incident_record(path: str) -> dict[str, Any]:
-    p = Path(path)
-    if not p.exists() or not p.is_file():
-        raise click.ClickException(f"Incident file not found: {path}")
-
-    raw = p.read_text(encoding="utf-8")
-    suffix = p.suffix.lower()
-
-    try:
-        if suffix in {".yaml", ".yml"}:
-            data = yaml.safe_load(raw)
-        else:
-            data = json.loads(raw)
-    except Exception as exc:  # noqa: BLE001
-        raise click.ClickException(f"Failed to parse incident record '{path}': {exc}") from exc
-
-    if not isinstance(data, dict):
-        raise click.ClickException(f"Incident record must be an object: {path}")
-
-    # Accept common layouts: top-level state or nested workflow.state
-    state = data.get("state")
-    if state is None and isinstance(data.get("workflow"), dict):
-        state = data["workflow"].get("state")
-
-    if not isinstance(state, str) or not state.strip():
-        raise click.ClickException(
-            "Incident record does not contain a valid workflow state field "
-            "(expected 'state' or 'workflow.state')."
-        )
-
-    data["__resolved_state"] = state.strip()
-    return data
+from jinja2 import Environment, FileSystemLoader, select_autoescape
 
 
 @click.group()
-def ir() -> None:
-    pass
+def cli() -> None:
+    """IR Playbooks Automation CLI."""
 
 
-@ir.command("workflow-next")
-@click.option("--from", "from_state", required=False, help="Current state to evaluate transitions from.")
-@click.option("--to", "to_state", required=False, help="Specific target state to validate.")
+@cli.command("report-html")
+@click.argument("incident_file", type=click.Path(exists=True, dir_okay=False, path_type=Path))
 @click.option(
-    "--incident",
-    "incident_path",
-    required=False,
-    type=click.Path(exists=False, dir_okay=False),
-    help=(
-        "Path to incident JSON/YAML record used to resolve current state automatically. "
-        "Precedence: --from overrides --incident-derived state."
-    ),
+    "--output",
+    "output_file",
+    type=click.Path(dir_okay=False, path_type=Path),
+    required=True,
+    help="Path to write rendered HTML report.",
 )
-@click.option("--json", "as_json", is_flag=True, help="Emit JSON output.")
-def workflow_next(from_state: str | None, to_state: str | None, incident_path: str | None, as_json: bool) -> None:
-    """Compute allowed workflow transitions.
+@click.option(
+    "--title",
+    "report_title",
+    type=str,
+    required=False,
+    help="Optional custom heading for the HTML report; defaults to incident title.",
+)
+def report_html(incident_file: Path, output_file: Path, report_title: str | None) -> None:
+    """Generate an HTML incident report from an incident JSON record."""
+    incident = json.loads(incident_file.read_text(encoding="utf-8"))
 
-    Precedence rules:
-    1) If --from is provided, it is used.
-    2) Else if --incident is provided, current state is read from incident record.
-    3) Else command errors (missing source state).
-    """
+    env = Environment(
+        loader=FileSystemLoader("templates"),
+        autoescape=select_autoescape(["html", "xml"]),
+    )
+    template = env.get_template("reports/incident_report.html.j2")
 
-    resolved_from = from_state
-    if resolved_from is None and incident_path:
-        record = _load_incident_record(incident_path)
-        resolved_from = record["__resolved_state"]
+    effective_title = report_title or incident.get("title") or "Incident Report"
 
-    if not resolved_from:
-        raise click.ClickException("Provide --from or --incident to resolve the current workflow state.")
+    html = template.render(
+        incident=incident,
+        title=effective_title,
+    )
 
-    # Placeholder transition map; in repo this should call existing workflow engine utility.
-    transitions: dict[str, list[str]] = {
-        "new": ["triage"],
-        "triage": ["contained", "closed"],
-        "contained": ["eradication", "closed"],
-        "eradication": ["recovery", "closed"],
-        "recovery": ["closed"],
-        "closed": [],
-    }
-
-    if resolved_from not in transitions:
-        raise click.ClickException(f"Unknown workflow state: {resolved_from}")
-
-    allowed = transitions[resolved_from]
-
-    if to_state is not None:
-        valid = to_state in allowed
-        if as_json:
-            click.echo(json.dumps({"from": resolved_from, "to": to_state, "allowed": valid}))
-        else:
-            click.echo("allowed" if valid else "blocked")
-        return
-
-    if as_json:
-        click.echo(json.dumps({"from": resolved_from, "next": allowed}))
-    else:
-        click.echo("\n".join(allowed))
+    output_file.parent.mkdir(parents=True, exist_ok=True)
+    output_file.write_text(html, encoding="utf-8")
+    click.echo(f"HTML report written to {output_file}")
 
 
 if __name__ == "__main__":
-    ir()
+    cli()
