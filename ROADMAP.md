@@ -55,4 +55,4 @@ This roadmap outlines planned improvements and features. Priorities may shift ba
 - [x] Click CLI (open-incident, set-severity,
 
 ## Automated Completions
-- [x] Add `ir workflow-next --reason` human-readable transition explanation (cycle 48)
+- [x] Add `ir report-html --title` flag for custom report heading (cycle 49)
