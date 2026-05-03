@@ -55,4 +55,4 @@ This roadmap outlines planned improvements and features. Priorities may shift ba
 - [x] Click CLI (open-incident, set-severity,
 
 ## Automated Completions
-- [x] Add `ir report-html --title` flag for custom report heading (cycle 49)
+- [x] Add `ir report-html --css` flag for external stylesheet injection (cycle 50)
