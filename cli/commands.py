@@ -1,9 +1,13 @@
-import click
+from __future__ import annotations
 
-from automations.cloud.aws.isolate_ec2_instance import isolate_instance as aws_isolate_instance
-from automations.cloud.aws.lockdown_s3_bucket import lockdown_bucket as aws_lockdown_bucket
-from automations.cloud.azure.isolate_azure_vm import isolate_vm as azure_isolate_vm
-from automations.cloud.gcp.isolate_gcp_instance import isolate_instance as gcp_isolate_instance
+import json
+from pathlib import Path
+from typing import Any
+
+import click
+from pydantic import ValidationError
+
+from schemas.incident import IncidentRecord
 
 
 @click.group()
@@ -11,78 +15,42 @@ def cli() -> None:
     """IR Playbooks Automation CLI."""
 
 
-@cli.group()
-def containment() -> None:
-    """Containment automation commands."""
+@cli.command("validate-incident")
+@click.option("--file", "file_path", required=True, type=click.Path(exists=True, dir_okay=False, path_type=Path), help="Path to incident record file (JSON/YAML).")
+def validate_incident(file_path: Path) -> None:
+    """Validate an incident record file against Pydantic schema."""
+    try:
+        payload = _load_incident_file(file_path)
+        IncidentRecord.model_validate(payload)
+    except ValidationError as exc:
+        click.echo("Validation failed:", err=True)
+        for err in exc.errors():
+            loc = ".".join(str(p) for p in err.get("loc", []))
+            msg = err.get("msg", "invalid value")
+            click.echo(f"- {loc}: {msg}", err=True)
+        raise SystemExit(1)
+    except Exception as exc:  # pragma: no cover - defensive parse/runtime guard
+        click.echo(f"Unable to validate incident file: {exc}", err=True)
+        raise SystemExit(2)
+
+    click.echo("Incident record is valid.")
 
 
-@containment.command("aws-isolate-ec2")
-@click.option("--instance-id", required=True, help="EC2 instance ID to isolate")
-@click.option("--region", required=True, help="AWS region")
-@click.option("--dry-run", is_flag=True, default=False, help="Print intended action without executing")
-def aws_isolate_ec2(instance_id: str, region: str, dry_run: bool) -> None:
-    if dry_run:
-        click.echo(
-            f"[DRY-RUN] Would isolate AWS EC2 instance '{instance_id}' in region '{region}'."
-        )
-        return
+def _load_incident_file(path: Path) -> dict[str, Any]:
+    suffix = path.suffix.lower()
+    text = path.read_text(encoding="utf-8")
 
-    aws_isolate_instance(instance_id=instance_id, region=region)
-    click.echo(f"Isolated AWS EC2 instance '{instance_id}' in region '{region}'.")
+    if suffix == ".json":
+        return json.loads(text)
 
+    if suffix in {".yml", ".yaml"}:
+        try:
+            import yaml  # type: ignore
+        except Exception as exc:  # pragma: no cover
+            raise RuntimeError("PyYAML is required to parse YAML incident files") from exc
+        loaded = yaml.safe_load(text)
+        if not isinstance(loaded, dict):
+            raise ValueError("YAML incident content must be a mapping/object")
+        return loaded
 
-@containment.command("aws-lockdown-s3")
-@click.option("--bucket", required=True, help="S3 bucket name to lock down")
-@click.option("--dry-run", is_flag=True, default=False, help="Print intended action without executing")
-def aws_lockdown_s3(bucket: str, dry_run: bool) -> None:
-    if dry_run:
-        click.echo(f"[DRY-RUN] Would lock down AWS S3 bucket '{bucket}'.")
-        return
-
-    aws_lockdown_bucket(bucket_name=bucket)
-    click.echo(f"Locked down AWS S3 bucket '{bucket}'.")
-
-
-@containment.command("azure-isolate-vm")
-@click.option("--subscription-id", required=True, help="Azure subscription ID")
-@click.option("--resource-group", required=True, help="Azure resource group")
-@click.option("--vm-name", required=True, help="Azure VM name")
-@click.option("--dry-run", is_flag=True, default=False, help="Print intended action without executing")
-def azure_isolate(subscription_id: str, resource_group: str, vm_name: str, dry_run: bool) -> None:
-    if dry_run:
-        click.echo(
-            "[DRY-RUN] Would isolate Azure VM "
-            f"'{vm_name}' in resource group '{resource_group}' (subscription '{subscription_id}')."
-        )
-        return
-
-    azure_isolate_vm(
-        subscription_id=subscription_id,
-        resource_group=resource_group,
-        vm_name=vm_name,
-    )
-    click.echo(
-        f"Isolated Azure VM '{vm_name}' in resource group '{resource_group}' (subscription '{subscription_id}')."
-    )
-
-
-@containment.command("gcp-isolate-instance")
-@click.option("--project", required=True, help="GCP project ID")
-@click.option("--zone", required=True, help="GCP zone")
-@click.option("--instance", required=True, help="GCP instance name")
-@click.option("--dry-run", is_flag=True, default=False, help="Print intended action without executing")
-def gcp_isolate(project: str, zone: str, instance: str, dry_run: bool) -> None:
-    if dry_run:
-        click.echo(
-            f"[DRY-RUN] Would isolate GCP instance '{instance}' in project '{project}', zone '{zone}'."
-        )
-        return
-
-    gcp_isolate_instance(project_id=project, zone=zone, instance_name=instance)
-    click.echo(
-        f"Isolated GCP instance '{instance}' in project '{project}', zone '{zone}'."
-    )
-
-
-if __name__ == "__main__":
-    cli()
+    raise ValueError("Unsupported file type. Use .json, .yml, or .yaml")
