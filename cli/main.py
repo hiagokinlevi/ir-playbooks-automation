@@ -7,51 +7,40 @@ import click
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 
 
-def _build_jinja_env() -> Environment:
-    return Environment(
-        loader=FileSystemLoader("templates"),
-        autoescape=select_autoescape(["html", "xml"]),
-    )
-
-
 @click.group()
 def cli() -> None:
     """IR Playbooks Automation CLI."""
 
 
 @cli.command("report-html")
-@click.option("--input", "input_path", required=True, type=click.Path(exists=True, dir_okay=False, path_type=Path), help="Incident JSON input")
-@click.option("--output", "output_path", required=True, type=click.Path(dir_okay=False, path_type=Path), help="Rendered HTML output path")
-@click.option(
-    "--css",
-    "css_path",
-    required=False,
-    type=click.Path(exists=False, dir_okay=False, path_type=Path),
-    help="Optional local CSS file to inject into the report.",
-)
-def report_html(input_path: Path, output_path: Path, css_path: Path | None) -> None:
-    """Render incident report HTML from JSON."""
-    with input_path.open("r", encoding="utf-8") as f:
-        incident = json.load(f)
+@click.option("--incident", "incident_path", type=click.Path(exists=True, dir_okay=False, path_type=Path), required=True, help="Path to incident JSON file")
+@click.option("--template", "template_path", type=click.Path(exists=True, dir_okay=False, path_type=Path), required=True, help="Path to Jinja2 HTML template")
+@click.option("--output", "output_path", type=click.Path(dir_okay=False, path_type=Path), required=False, help="Write rendered HTML to explicit file path")
+@click.option("--force", is_flag=True, default=False, help="Overwrite output file if it already exists")
+def report_html(incident_path: Path, template_path: Path, output_path: Path | None, force: bool) -> None:
+    """Render an incident report as HTML."""
+    incident_data = json.loads(incident_path.read_text(encoding="utf-8"))
 
-    custom_css = ""
-    if css_path is not None:
-        if not css_path.exists():
-            raise click.ClickException(f"CSS file not found: {css_path}")
-        if not css_path.is_file():
-            raise click.ClickException(f"CSS path is not a file: {css_path}")
-        try:
-            custom_css = css_path.read_text(encoding="utf-8")
-        except OSError as exc:
-            raise click.ClickException(f"Unable to read CSS file '{css_path}': {exc}") from exc
+    env = Environment(
+        loader=FileSystemLoader(str(template_path.parent)),
+        autoescape=select_autoescape(["html", "xml"]),
+    )
+    template = env.get_template(template_path.name)
+    rendered = template.render(incident=incident_data)
 
-    env = _build_jinja_env()
-    template = env.get_template("reports/incident_report.html.j2")
-    rendered = template.render(incident=incident, custom_css=custom_css)
+    if output_path is None:
+        click.echo(rendered)
+        return
 
     output_path.parent.mkdir(parents=True, exist_ok=True)
+
+    if output_path.exists() and not force:
+        raise click.ClickException(
+            f"Output file already exists: {output_path}. Use --force to overwrite."
+        )
+
     output_path.write_text(rendered, encoding="utf-8")
-    click.echo(f"HTML report written: {output_path}")
+    click.echo(f"Wrote HTML report to {output_path}")
 
 
 if __name__ == "__main__":
