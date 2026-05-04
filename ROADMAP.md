@@ -55,4 +55,4 @@ This roadmap outlines planned improvements and features. Priorities may shift ba
 - [x] Click CLI (open-incident, set-severity,
 
 ## Automated Completions
-- [x] Add `ir workflow-next --json` for structured transition output (cycle 51)
+- [x] Add `ir report-html --output` flag to write report to explicit file path (cycle 52)
