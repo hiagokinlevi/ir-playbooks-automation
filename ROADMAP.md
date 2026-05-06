@@ -23,6 +23,7 @@ This roadmap outlines planned improvements and features. Priorities may shift ba
 - [ ] PDF export for executive briefs
 - [ ] MTTR / MTTD metrics dashboard (Markdown + CSV output)
 - [ ] STIX/TAXII output for threat intel sharing
+- [x] `ir report-html --include-timeline` embeds timeline markdown/template section (uses default timeline path when present; warns and continues if missing)
 
 ## v1.4 — Integrations
 
@@ -53,6 +54,3 @@ This roadmap outlines planned improvements and features. Priorities may shift ba
 - [x] Pydantic incident schemas
 - [x] Incident state machine
 - [x] Click CLI (open-incident, set-severity,
-
-## Automated Completions
-- [x] Add `ir report-html --incident` flag to auto-load incident record context (cycle 54)
