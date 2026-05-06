@@ -55,4 +55,4 @@ This roadmap outlines planned improvements and features. Priorities may shift ba
 - [x] Click CLI (open-incident, set-severity,
 
 ## Automated Completions
-- [x] Add `ir report-html --include-timeline` to embed timeline template section (cycle 55)
+- [x] Add `ir report-html --metadata` flag to print report generation metadata (cycle 56)
