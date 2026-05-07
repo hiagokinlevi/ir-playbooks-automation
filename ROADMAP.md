@@ -52,4 +52,7 @@ This roadmap outlines planned improvements and features. Priorities may shift ba
 - [x] Evidence packaging with SHA-256 manifest
 - [x] Pydantic incident schemas
 - [x] Incident state machine
-- [x] Click CLI (open-incident, set-severity, workflow-next transition validation via `workflow-next --from <state> --to <state>`)
+- [x] Click CLI (open-incident, set-severity,
+
+## Automated Completions
+- [x] Add `ir workflow-next --from --to` transition validation mode (cycle 57)
