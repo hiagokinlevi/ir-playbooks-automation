@@ -55,4 +55,4 @@ This roadmap outlines planned improvements and features. Priorities may shift ba
 - [x] Click CLI (open-incident, set-severity,
 
 ## Automated Completions
-- [x] Add `ir workflow-next --from --to` transition validation mode (cycle 57)
+- [x] Add `ir validate-incident --strict` to fail on unknown fields (cycle 58)
