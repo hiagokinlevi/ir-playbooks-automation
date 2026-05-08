@@ -55,4 +55,4 @@ This roadmap outlines planned improvements and features. Priorities may shift ba
 - [x] Click CLI (open-incident, set-severity,
 
 ## Automated Completions
-- [x] Add `ir validate-incident --strict` to fail on unknown fields (cycle 58)
+- [x] Add `ir validate-incident --schema-version` compatibility check (cycle 59)
