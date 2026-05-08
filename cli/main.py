@@ -1,67 +1,44 @@
 from __future__ import annotations
 
 import json
-from copy import deepcopy
 from pathlib import Path
-from typing import Any
 
 import click
-from pydantic import BaseModel, ConfigDict, ValidationError, create_model
 
 from schemas.incident import IncidentRecord
 
 
 @click.group()
-def ir() -> None:
+def cli() -> None:
     """IR Playbooks Automation CLI."""
 
 
-def _load_json_file(path: Path) -> dict[str, Any]:
+@cli.command("validate-incident")
+@click.argument("incident_file", type=click.Path(exists=True, path_type=Path))
+@click.option(
+    "--schema-version",
+    "schema_version",
+    default=None,
+    help="Expected schema version for compatibility check (e.g. 1.0).",
+)
+def validate_incident(incident_file: Path, schema_version: str | None) -> None:
+    """Validate an incident record JSON against the incident schema."""
     try:
-        return json.loads(path.read_text(encoding="utf-8"))
-    except FileNotFoundError as exc:
-        raise click.ClickException(f"File not found: {path}") from exc
-    except json.JSONDecodeError as exc:
-        raise click.ClickException(f"Invalid JSON in {path}: {exc}") from exc
+        data = json.loads(incident_file.read_text(encoding="utf-8"))
+    except Exception as exc:  # pragma: no cover
+        raise click.ClickException(f"Failed to read incident file: {exc}")
 
-
-def _strict_model_for(model: type[BaseModel]) -> type[BaseModel]:
-    """Create a runtime model equivalent to `model` but with extra fields forbidden."""
-    fields: dict[str, tuple[Any, Any]] = {}
-    for name, field in model.model_fields.items():
-        default: Any
-        if field.is_required():
-            default = ...
-        elif field.default_factory is not None:
-            default = field.default_factory
-        else:
-            default = deepcopy(field.default)
-        fields[name] = (field.annotation, default)
-
-    return create_model(
-        f"{model.__name__}Strict",
-        __base__=model,
-        __config__=ConfigDict(extra="forbid"),
-        **fields,
-    )
-
-
-@ir.command("validate-incident")
-@click.option("--file", "file_path", required=True, type=click.Path(path_type=Path, exists=True, dir_okay=False))
-@click.option("--strict", is_flag=True, default=False, help="Reject unknown/extra fields during schema validation.")
-def validate_incident(file_path: Path, strict: bool) -> None:
-    """Validate an incident record JSON file against schema."""
-    payload = _load_json_file(file_path)
-    model: type[BaseModel] = _strict_model_for(IncidentRecord) if strict else IncidentRecord
+    if schema_version is not None:
+        detected_version = data.get("schema_version")
+        if detected_version != schema_version:
+            raise click.ClickException(
+                "Schema version mismatch: "
+                f"expected '{schema_version}', detected '{detected_version}'."
+            )
 
     try:
-        model.model_validate(payload)
-    except ValidationError as exc:
-        lines = ["Incident validation failed:"]
-        for err in exc.errors():
-            loc = ".".join(str(p) for p in err.get("loc", [])) or "<root>"
-            msg = err.get("msg", "Validation error")
-            lines.append(f"- {loc}: {msg}")
-        raise click.ClickException("\n".join(lines)) from exc
+        IncidentRecord.model_validate(data)
+    except Exception as exc:
+        raise click.ClickException(f"Incident validation failed: {exc}")
 
-    click.echo("Incident validation passed.")
+    click.echo("Incident record is valid.")
